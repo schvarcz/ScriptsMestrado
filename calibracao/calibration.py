@@ -1,5 +1,5 @@
 import numpy as np
-import cv2
+import cv2, os
 import glob
 
 # termination criteria
@@ -14,7 +14,7 @@ objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 
 #vid = cv2.VideoCapture("Camera Rodrigo/MOV03944.MPG")
-vid = cv2.VideoCapture("cel/VID_20140313_022058995.mp4")
+vid = cv2.VideoCapture(os.path.expanduser("~/Dissertacao/calibracao/cel/VID_20140313_022058995.mp4"))
 i = 0
 while vid.grab():
     if i%100 != 0:

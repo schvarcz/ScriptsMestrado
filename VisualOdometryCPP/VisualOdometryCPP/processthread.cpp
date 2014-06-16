@@ -12,8 +12,8 @@ ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString dir, 
 
 void ProcessThread::run()
 {
-    QString defaultPath = "/home/schvarcz/Dropbox/UFRGS - Mestrado/Dissertacao/datasets/";
-    QString savePath = "/home/schvarcz/Dropbox/UFRGS - Mestrado/Dissertacao/datasets/featuresss/";
+    QString defaultPath = "/home/schvarcz/Dissertacao/datasets/";
+    QString savePath = "/home/schvarcz/Dissertacao/OdometriaVisual/featuresss/";
 
     QStringList paths;
     paths
@@ -23,9 +23,11 @@ void ProcessThread::run()
 //            << "drone/20140318_133931"
 //            << "drone/20140318_133931_gray"
 //            << "drone/20140327_135316_gray"
-            << "drone/20140328_102444_gray"
+//            << "drone/20140328_102444_gray"
 //            << "nao/nao2"
 //            << "nao/nao2_gray"
+//            << "nao/nao2_rect"
+            << "nao/nao2_rect_escolha"
 //            << "nao/naooo_2014-03-10-17-48-35"
 //            << "nao/naooo_2014-03-10-17-48-35_gray"
              ;
@@ -39,8 +41,8 @@ void ProcessThread::run()
             QDir diretory;
             QString sPath = savePath+*path + "/step_" + QString::number(steps[s]);
             diretory.mkpath(sPath);
-            gerarDadosCV(defaultPath+*path,sPath ,steps[s]);
-            //    gerarDadosComLibviso(defaultPath+paths[0],sPath,steps[s]);
+//            gerarDadosCV(defaultPath+*path,sPath ,steps[s]);
+            gerarDadosComLibviso(defaultPath+paths[0],sPath,steps[s]);
         }
     }
 }

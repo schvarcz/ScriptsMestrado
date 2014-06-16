@@ -1,0 +1,2 @@
+NAO_IP=192.168.0.1 roslaunch nao_driver nao_camera.launch
+NAO_IP=192.168.0.1 roslaunch nao_driver nao_driver.launch force_python:=true

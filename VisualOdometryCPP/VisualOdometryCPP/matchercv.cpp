@@ -9,10 +9,10 @@ MatcherCV::MatcherCV(string methodDetector, string methodDescriptor) : IMatcher(
 
 void MatcherCV::matchFeatures()
 {
-//    cout << "Detecting" << endl;
+    cout << "Detecting" << endl;
     detector->detect(I1c,I1ckp);
 
-//    cout << "Descriptors" << endl;
+    cout << "Descriptors" << endl;
     descriptor->compute(I1c,I1ckp,I1cd);
 
     if(firstImg)
@@ -21,7 +21,7 @@ void MatcherCV::matchFeatures()
         return;
     }
 
-//    cout << "Double matching" << endl;
+    cout << "Double matching" << endl;
     vector<DMatch> matches1,matches2, good_matches;
     flannMatcher.match(I1cd,I1pd, matches1);
     flannMatcher.match(I1pd,I1cd, matches2);

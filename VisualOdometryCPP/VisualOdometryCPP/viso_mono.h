@@ -23,6 +23,7 @@ Street, Fifth Floor, Boston, MA 02110-1301, USA
 #define VISO_MONO_H
 #include <opencv2/opencv.hpp>
 #include "viso.h"
+#include <QDebug>
 
 using namespace cv;
 class VisualOdometryMono : public VisualOdometry {
