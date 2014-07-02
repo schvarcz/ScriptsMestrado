@@ -13,9 +13,8 @@ def onclick(event):
     ang = rad2deg(atan2(event.ydata - pts[-1][1],event.xdata - pts[-1][0]))
     if ang< 0:
         ang += 360
-    print '[%f, %f],'%(
-         sqrt((event.ydata - pts[-1][1])**2 + (event.xdata - pts[-1][0])**2),
-          ang - pts[-1][2])
+#    print '[%f, %f],'%(event.xdata, event.ydata)
+    print '[%f, %f, %f],'%(event.xdata, event.ydata, ang)
     
     pts.append([event.xdata, event.ydata,ang])
     ax.clear()
