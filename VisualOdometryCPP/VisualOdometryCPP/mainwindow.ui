@@ -24,6 +24,11 @@
       </item>
       <item>
        <property name="text">
+        <string>MotoX</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
         <string>Ardrone</string>
        </property>
       </item>

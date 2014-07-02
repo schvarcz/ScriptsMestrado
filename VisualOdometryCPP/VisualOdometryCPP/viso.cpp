@@ -43,14 +43,21 @@ VisualOdometry::~VisualOdometry () {
 bool VisualOdometry::updateMotion () {
 
     // estimate motion
-    vector<double> tr_delta = estimateMotion(p_matched);
+    vector<double> delta = estimateMotion(p_matched);
 
     // on failure
-    if (tr_delta.size()!=6)
+    if (delta.size()!=6)
         return false;
 
+    for(int i =0;i<6;i++)
+        cout << delta[i] << "; ";
+    cout << endl;
     // set transformation matrix (previous to current frame)
-    Tr_delta = transformationVectorToMatrix(tr_delta);
+    Tr_delta = transformationVectorToMatrix(delta);
+    Matrix tr(6,1);
+    for(int i =0;i<6;i++)
+        tr.val[i][0] = delta[i];
+    tr_delta = tr;
     Tr_valid = true;
 
     // success

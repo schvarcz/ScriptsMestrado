@@ -24,10 +24,13 @@ void ProcessThread::run()
 //            << "drone/20140318_133931_gray"
 //            << "drone/20140327_135316_gray"
 //            << "drone/20140328_102444_gray"
+//            << "motox/VID_20140617_162058756_GRAY"
+            << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
+//            << "motox/VID_20140617_163505406_GRAY"
 //            << "nao/nao2"
 //            << "nao/nao2_gray"
 //            << "nao/nao2_rect"
-            << "nao/nao2_rect_escolha"
+//            << "nao/nao2_rect_escolha"
 //            << "nao/naooo_2014-03-10-17-48-35"
 //            << "nao/naooo_2014-03-10-17-48-35_gray"
              ;
@@ -59,6 +62,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 
         // current pose (this matrix transforms a point from the current
         // frame's camera coordinates to the first frame's camera coordinates)
+        Matrix rot = Matrix(6,1);
         Matrix pose = Matrix::eye(4);
 
         QDir diretory(defaultPath);
@@ -106,6 +110,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 
                     // on success, update current pose
                     pose = pose * Matrix::inv(viso.getMotion());
+                    rot = rot + viso.getMotionVector();
 
                     // output some statistics
                     double num_matches = viso.getNumberOfMatches();
@@ -124,8 +129,9 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
                 {
                     *features << it->u1p << "," << it->v1p << " ; " << it->u1c << ", " << it->v1c << endl;
                 }
-                qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3];
-                *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
+                qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << endl;
+                *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << endl;
+//                *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
 
                 // release uint8_t buffers
                 free(img_data);

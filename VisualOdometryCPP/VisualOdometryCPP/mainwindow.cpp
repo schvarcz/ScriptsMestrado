@@ -52,6 +52,14 @@ void MainWindow::on_pushButton_clicked()
         param.calib.cu = 320.583306; // principal point (u-coordinate) in pixels
         param.calib.cv = 164.804138; // principal point (v-coordinate) in pixels
     }
+    else if (!ui->CBRobo->currentText().compare("Motox"))
+    {
+        qDebug() << "MotoX"; //Copia do ardrone
+        // calibration parameters for sequence drone
+        param.calib.f  = 2.31584916e+03; // focal length in pixels
+        param.calib.cu = 1.00664394e+03; // principal point (u-coordinate) in pixels
+        param.calib.cv = 5.04108086e+02; // principal point (v-coordinate) in pixels
+    }
 
     // sequence directory
     QString dir = ui->LEDir->text(), filePattern = ui->LENamePattern->text();

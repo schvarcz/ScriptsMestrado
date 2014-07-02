@@ -13,10 +13,13 @@ paths = [
 #            "drone/20140318_133931_gray",
 #            "drone/20140327_135316_gray",
 #            "drone/20140328_102444_gray",
+#             "motox/VID_20140617_163505406_GRAY",
+#             "motox/VID_20140617_162058756_GRAY",
+             "motox/VID_20140617_162058756_GRAY_ESCOLHA",
 #            "nao/nao2",
 #            "nao/nao2_gray",
 #            "nao/nao2_rect",
-            "nao/nao2_rect_escolha",
+#            "nao/nao2_rect_escolha",
 #            "nao/naooo_2014-03-10-17-48-35",
 #            "nao/naooo_2014-03-10-17-48-35_gray"
              ]

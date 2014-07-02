@@ -6,10 +6,11 @@ from matplotlib.gridspec import GridSpec
 import numpy as np, os
 
 
-video = VideoCapture("video_20140328_102444.mp4")
+path = os.path.expanduser("~/Dissertacao/datasets/motox/VID_20140617_162058756")
+video = VideoCapture(path+".mp4")
+path = path + "_GRAY"
 
 frame = 0
-path = "20140328_102444/"
 
 if not os.path.exists(path):
     os.mkdir(path)
@@ -18,6 +19,6 @@ while (video.grab()):
     print "Frame ", frame
     b, img = video.retrieve()
     img = cvtColor(img,cv.CV_RGB2GRAY)
-    imwrite("{0}I1_{1:06d}.png".format(path,frame),img)
+    imwrite("{0}/I1_{1:06d}.png".format(path,frame),img)
     frame += 1
 
