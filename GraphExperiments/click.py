@@ -6,13 +6,15 @@ from matplotlib import pyplot as plt
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.plot(np.random.rand(10))
-pts = [[0,0, 0]]
+pts = []
 def onclick(event):
     global pts, ax
     
-    ang = rad2deg(atan2(event.ydata - pts[-1][1],event.xdata - pts[-1][0]))
-    if ang< 0:
-        ang += 360
+    ang = 0.
+    if pts != []:
+        ang = rad2deg(atan2(event.ydata - pts[-1][1],event.xdata - pts[-1][0]))
+        if ang< 0:
+            ang += 360
 #    print '[%f, %f],'%(event.xdata, event.ydata)
     print '[%f, %f, %f],'%(event.xdata, event.ydata, ang)
     
