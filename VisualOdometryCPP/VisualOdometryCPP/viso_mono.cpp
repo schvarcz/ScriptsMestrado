@@ -39,13 +39,9 @@ bool VisualOdometryMono::process (uint8_t *I,int32_t* dims,bool replace) {
 }
 
 bool VisualOdometryMono::process (Mat &I) {
-    qDebug() << "aqui0";
     matcherCV->pushBack(I);
-    qDebug() << "aqui1";
     matcherCV->matchFeatures();
-    qDebug() << "aqui2";
     p_matched = matcherCV->getMatches();
-    qDebug() << "aqui3";
     return updateMotion();
 }
 

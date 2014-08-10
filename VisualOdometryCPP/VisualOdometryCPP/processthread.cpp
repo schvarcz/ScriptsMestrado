@@ -13,7 +13,7 @@ ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString dir, 
 void ProcessThread::run()
 {
     QString defaultPath = "/home/schvarcz/Dissertacao/datasets/";
-    QString savePath = "/home/schvarcz/Dissertacao/OdometriaVisual/featuresss/";
+    QString savePath = "/home/schvarcz/Dissertacao/OdometriaVisual/features/";
 
     QStringList paths;
     paths
@@ -27,6 +27,7 @@ void ProcessThread::run()
 //            << "motox/VID_20140617_162058756_GRAY"
             << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
 //            << "motox/VID_20140617_163505406_GRAY"
+//            << "car_simulation/carro_stereo_2014-06-12-02-14-53_2"
 //            << "nao/nao2"
 //            << "nao/nao2_gray"
 //            << "nao/nao2_rect"
@@ -44,8 +45,8 @@ void ProcessThread::run()
             QDir diretory;
             QString sPath = savePath+*path + "/step_" + QString::number(steps[s]);
             diretory.mkpath(sPath);
-//            gerarDadosCV(defaultPath+*path,sPath ,steps[s]);
-            gerarDadosComLibviso(defaultPath+paths[0],sPath,steps[s]);
+            gerarDadosCV(defaultPath+*path,sPath ,steps[s]);
+//            gerarDadosComLibviso(defaultPath+paths[0],sPath,steps[s]);
         }
     }
 }
@@ -158,6 +159,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
 
     // current pose (this matrix transforms a point from the current
     // frame's camera coordinates to the first frame's camera coordinates)
+    Matrix rot = Matrix(6,1);
     Matrix pose = Matrix::eye(4);
 
     QDir diretory(defaultPath);
@@ -191,6 +193,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
 
                 // on success, update current pose
                 pose = pose * Matrix::inv(viso.getMotion());
+                rot = rot + viso.getMotionVector();
 
                 // output some statistics
                 double num_matches = viso.getNumberOfMatches();
@@ -216,10 +219,11 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
             }
 //            imshow("features",img);
 
-            QString fileName = QString("/fig_%0.jpg").arg(QString::number(i/step),6, QChar('0'));
+            QString fileName = QString("/I1_%0.png").arg(QString::number(i/step),6, QChar('0'));
             imwrite((savePath+fileName).toStdString(),img);
             qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3];
-            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
+//            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
+            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << endl;
 
             // release uint8_t buffers
             img.release();
