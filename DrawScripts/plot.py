@@ -4,11 +4,13 @@ from matplotlib.pyplot import subplots,cm, imread
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
-import csv, os
+import csv, os, sys
 from numpy import *
 from math import atan2
 
-plt.ion()
+delay = "--delay" in sys.argv
+if delay:
+    plt.ion()
 f = plt.figure()
 
 paths = [ 
@@ -69,7 +71,10 @@ for skip in [1]:
                 os.makedirs(pathSalvar)
 
             plt.get_current_fig_manager().resize(*plt.get_current_fig_manager().window.maxsize())
-            for j in xrange(0,len(transLibViso[0]),skip):
+            skips = [len(transLibViso[0])-2]
+            if delay:
+                skips = xrange(0,len(transLibViso[0]),skip)
+            for j in skips:
                 f.clear()
                 gs = GridSpec(3,2)
                 #ax1 = plt.subplot(gs[0,1:])
@@ -99,9 +104,12 @@ for skip in [1]:
                     ax4.set_ylabel("Angle")
                     ax4.set_xlim(0,len(transLibViso[0]))
 #                    ax4.set_ylim(-180,180)
-                    f.canvas.draw()
-                    f.savefig("{0}/fig_{1:06d}.png".format(pathSalvar,j))
-                    f.canvas.get_tk_widget().update() 
+                    if delay:
+                        f.canvas.draw()
+                        f.savefig("{0}/fig_{1:06d}.png".format(pathSalvar,j))
+                        f.canvas.get_tk_widget().update() 
+                    else:
+                        plt.show()
                     del img
                 except:
                     pass
