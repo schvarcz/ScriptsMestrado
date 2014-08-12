@@ -25,6 +25,7 @@ protected:
     void run();
     void gerarDadosComLibviso(QString defaultPath, QString savePath, int step);
     void gerarDadosCV(QString defaultPath, QString savePath, int step);
+    void drawFeaturesCorrespondence(Mat& img, vector<IMatcher::p_match> fts, const Scalar& colorLine, const Scalar& colorPoint);
 
 private:
     int step;

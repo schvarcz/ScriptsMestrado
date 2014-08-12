@@ -212,16 +212,13 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
                 qDebug() << " ... failed!" << endl;
             }
 
-            cvtColor(img,img,CV_GRAY2RGB);
             vector<IMatcher::p_match> fts = viso.getFeatures();
             for (vector<IMatcher::p_match>::iterator it = fts.begin(); it!=fts.end(); it++)
             {
-                Point ptc(it->u1c,it->v1c);
-                Point ptp(it->u1p,it->v1p);
-                line(img,ptc,ptp,Scalar(0,255,0));
-                circle(img,ptc,3,Scalar(255,0,255), -1);
                 *features << it->u1p << "," << it->v1p << " ; " << it->u1c << ", " << it->v1c << endl;
             }
+            cvtColor(img,img,CV_GRAY2RGB);
+            this->drawFeaturesCorrespondence(img,fts, Scalar(0,255,0), Scalar(255,0,255));
 //            imshow("features",img);
 
             QString fileName = QString("/I1_%0.png").arg(QString::number(i/step),6, QChar('0'));
@@ -241,4 +238,15 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
     }
     features->close();
     positions->close();
+}
+
+void ProcessThread::drawFeaturesCorrespondence(Mat& img, vector<IMatcher::p_match> fts, const Scalar& colorLine, const Scalar& colorPoint)
+{
+    for (vector<IMatcher::p_match>::iterator it = fts.begin(); it!=fts.end(); it++)
+    {
+        Point ptc(it->u1c,it->v1c);
+        Point ptp(it->u1p,it->v1p);
+        line(img,ptc,ptp,colorLine);
+        circle(img,ptc,3,colorPoint, -1);
+    }
 }
