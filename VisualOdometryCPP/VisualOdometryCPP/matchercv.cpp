@@ -1,6 +1,6 @@
 #include "matchercv.h"
 
-MatcherCV::MatcherCV(string methodDetector, string methodDescriptor) : IMatcher(), firstImg(true)
+MatcherCV::MatcherCV(string methodDetector, string methodDescriptor) : IMatcher()
 {
     initModule_nonfree();
     this->detector = FeatureDetector::create(methodDetector);
@@ -16,9 +16,8 @@ void MatcherCV::matchFeatures()
 //    cout << "Descriptors" << endl;
     descriptor->compute(I1c,I1ckp,I1cd);
 
-    if(firstImg)
+    if(I1pkp.size() == 0)
     {
-        firstImg = false;
         return;
     }
 
@@ -61,9 +60,10 @@ void MatcherCV::matchFeatures()
 //    cout << "P Matches: " << p_matched_2.size() << endl;
 }
 
-void MatcherCV::pushBack(Mat &img)
+
+void MatcherCV::pushBack(Mat &img, bool replace)
 {
-    if (!firstImg)
+    if (!replace)
     {
         I1p = I1c;
         I1pkp.clear();

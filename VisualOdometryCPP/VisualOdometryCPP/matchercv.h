@@ -18,13 +18,12 @@ public:
     Ptr<FeatureDetector> detector;
     Ptr<DescriptorExtractor> descriptor;
 
-    void pushBack(Mat &img);
+    void pushBack(Mat &img, bool replace = false);
     void matchFeatures();
 private:
     Mat I1p, I1c;
     vector<KeyPoint> I1ckp, I1pkp;
     Mat I1cd, I1pd;
     FlannBasedMatcher flannMatcher;
-    bool firstImg;
 };
 #endif // MATCHERCV_H

@@ -169,6 +169,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
     filtro << "*.png";
     int nFrames = diretory.entryList(filtro).count();
     qDebug() << nFrames;
+    bool replace = false;
 
     // loop through all frames i=0:372
     for (int i=0; i<nFrames; i+=step) {
@@ -190,12 +191,13 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
 
             // compute visual odometry
 
-            if (viso.process(img)) {
+            if (viso.process(img,replace && i!=1)) {
                 qDebug() << "Processing: Frame: " << i;
 
                 // on success, update current pose
                 pose = pose * Matrix::inv(viso.getMotion());
                 rot = rot + viso.getMotionVector();
+                replace = false;
 
                 // output some statistics
                 double num_matches = viso.getNumberOfMatches();
@@ -206,6 +208,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
                 //qDebug() << pose << endl << endl;
 
             } else {
+                replace = true;
                 qDebug() << " ... failed!" << endl;
             }
 
