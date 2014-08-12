@@ -99,6 +99,8 @@ public:
     
   // returns the indices of all inliers
   std::vector<int32_t> getInlierIndices () { return inliers; }
+
+  std::vector<IMatcher::p_match> getInliers();
   
   // given a vector of inliers computes gain factor between the current and
   // the previous frame. this function is useful if you want to reconstruct 3d

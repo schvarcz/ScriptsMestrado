@@ -112,3 +112,14 @@ vector<int32_t> VisualOdometry::getRandomSample(int32_t N,int32_t num) {
     // return sample
     return sample;
 }
+
+std::vector<IMatcher::p_match> VisualOdometry::getInliers()
+{
+    std::vector<IMatcher::p_match> ret;
+    std::vector<int32_t> indices = this->getInlierIndices();
+    for(int i=0;i<indices.size();i++)
+    {
+        ret.push_back(p_matched[i]);
+    }
+    return ret;
+}

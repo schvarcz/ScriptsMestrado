@@ -219,6 +219,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
             }
             cvtColor(img,img,CV_GRAY2RGB);
             this->drawFeaturesCorrespondence(img,fts, Scalar(0,255,0), Scalar(255,0,255));
+            this->drawFeaturesCorrespondence(img,viso.getInliers(), Scalar(0, 0, 255), Scalar(0,255,255));
 //            imshow("features",img);
 
             QString fileName = QString("/I1_%0.png").arg(QString::number(i/step),6, QChar('0'));
