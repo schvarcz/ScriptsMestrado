@@ -11,7 +11,6 @@ class IMatcher
 {
 public:
     IMatcher();
-//    pushBack (uint8_t *I1,int32_t* dims,const bool replace);
 
     // structure for storing matches
     struct p_match {
@@ -29,10 +28,16 @@ public:
               u1p(u1p),v1p(v1p),i1p(i1p),u2p(u2p),v2p(v2p),i2p(i2p),
               u1c(u1c),v1c(v1c),i1c(i1c),u2c(u2c),v2c(v2c),i2c(i2c) {}
     };
+
+    // feature bucketing: keeps only max_features per bucket, where the domain
+    // is split into buckets of size (bucket_width,bucket_height)
+    void bucketFeatures(int32_t max_features,float bucket_width,float bucket_height);
+
     vector<IMatcher::p_match> p_matched_1;
     vector<IMatcher::p_match> p_matched_2;
 
-    vector<IMatcher::p_match> getMatches() { return p_matched_2; }
+    // return vector with matched feature points and indices
+    std::vector<IMatcher::p_match> getMatches() { return p_matched_2; }
 };
 
 #endif // IMATCHER_H

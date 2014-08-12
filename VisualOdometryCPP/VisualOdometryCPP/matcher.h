@@ -34,7 +34,7 @@ Street, Fifth Floor, Boston, MA 02110-1301, USA
 
 #include "matrix.h"
 
-class Matcher {
+class Matcher: public IMatcher {
 
 public:
 
@@ -105,13 +105,6 @@ public:
   //        Tr_delta: uses motion from previous frame to better search for
   //                  matches, if specified
   void matchFeatures(int32_t method, Matrix *Tr_delta = 0);
-
-  // feature bucketing: keeps only max_features per bucket, where the domain
-  // is split into buckets of size (bucket_width,bucket_height)
-  void bucketFeatures(int32_t max_features,float bucket_width,float bucket_height);
-
-  // return vector with matched feature points and indices
-  std::vector<IMatcher::p_match> getMatches() { return p_matched_2; }
 
   // given a vector of inliers computes gain factor between the current and
   // the previous frame. this function is useful if you want to reconstruct 3d
@@ -223,8 +216,6 @@ private:
   uint8_t *I1p_dv_full,*I2p_dv_full,*I1c_dv_full,*I2c_dv_full; // half-res matching
   int32_t dims_p[3],dims_c[3];
 
-  std::vector<IMatcher::p_match> p_matched_1;
-  std::vector<IMatcher::p_match> p_matched_2;
   std::vector<Matcher::range>   ranges;
 };
 

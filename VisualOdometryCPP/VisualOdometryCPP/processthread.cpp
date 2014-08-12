@@ -55,8 +55,9 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 {
         features = new ofstream();
         positions = new ofstream();
-        features->open((defaultPath+"/features_%1.csv").arg(step).toAscii());
-        positions->open((defaultPath+"/posicoes_%1.csv").arg(step).toAscii());
+
+        features->open((savePath+"/features_%1.csv").arg(step).toAscii());
+        positions->open((savePath+"/posicoes_%1.csv").arg(step).toAscii());
 
         // init visual odometry
         VisualOdometryMono viso(param);
@@ -151,8 +152,9 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
 {
     features = new ofstream();
     positions = new ofstream();
-    features->open((defaultPath+"/features_%1.csv").arg(step).toAscii());
-    positions->open((defaultPath+"/posicoes_%1.csv").arg(step).toAscii());
+
+    features->open((savePath+"/features_%1.csv").arg(step).toAscii());
+    positions->open((savePath+"/posicoes_%1.csv").arg(step).toAscii());
 
     // init visual odometry
     VisualOdometryMono viso(param);

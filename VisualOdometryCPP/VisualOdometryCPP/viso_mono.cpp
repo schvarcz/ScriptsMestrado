@@ -41,6 +41,7 @@ bool VisualOdometryMono::process (uint8_t *I,int32_t* dims,bool replace) {
 bool VisualOdometryMono::process (Mat &I) {
     matcherCV->pushBack(I);
     matcherCV->matchFeatures();
+    matcher->bucketFeatures(param.bucket.max_features,param.bucket.bucket_width,param.bucket.bucket_height);
     p_matched = matcherCV->getMatches();
     return updateMotion();
 }
