@@ -73,6 +73,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
         int nFrames = diretory.entryList(filtro).count();
         qDebug() << nFrames;
 
+        bool replace = false;
         // loop through all frames i=0:372
         for (int32_t i=0; i<nFrames; i+=step) {
 
@@ -107,7 +108,8 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 
                 // compute visual odometry
                 int32_t dims[] = {width,height,width};
-                if (viso.process(img_data,dims)) {
+                if (viso.process(img_data,dims,replace  && i!=1)) {
+                    replace = false;
                     qDebug() << "Processing: Frame: " << i;
 
                     // on success, update current pose
@@ -123,6 +125,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
                     //qDebug() << pose << endl << endl;
 
                 } else {
+                    replace = true;
                     qDebug() << " ... failed!" << endl;
                 }
 
@@ -190,13 +193,24 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
             qDebug() << "Processing: Frame: " << i << "/" << nFrames;
 
             // compute visual odometry
-
-            if (viso.process(img,replace && i!=1)) {
-                qDebug() << "Processing: Frame: " << i;
+            if (viso.process(img,replace && i!=step)) {
 
                 // on success, update current pose
-                pose = pose * Matrix::inv(viso.getMotion());
-                rot = rot + viso.getMotionVector();
+                Matrix estimated = viso.getMotion();
+                Matrix estimatedMotionVector = viso.getMotionVector();
+
+                if (
+                        10 < sqrt(pow(estimatedMotionVector.val[3][0],2) + pow(estimatedMotionVector.val[4][0],2)  + pow(estimatedMotionVector.val[5][0],2))
+//                        && 0.2 > sqrt(pow(estimatedMotionVector.val[3][0],2) + pow(estimatedMotionVector.val[4][0],2)  + pow(estimatedMotionVector.val[5][0],2))
+                        )
+                {
+                    cout << "Ignorar movimento longo" << endl;
+                    replace = true;
+                    continue;
+                }
+
+                pose = pose * Matrix::inv(estimated);
+                rot = rot + estimatedMotionVector;
                 replace = false;
 
                 // output some statistics
@@ -209,6 +223,9 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
 
             } else {
                 replace = true;
+                // output some statistics
+                double num_matches = viso.getNumberOfMatches();
+                qDebug() << ", Matches: " << num_matches;
                 qDebug() << " ... failed!" << endl;
             }
 
