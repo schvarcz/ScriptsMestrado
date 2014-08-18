@@ -25,7 +25,12 @@ void ProcessThread::run()
 //            << "drone/20140327_135316_gray"
 //            << "drone/20140328_102444_gray"
 //            << "motox/VID_20140617_162058756_GRAY"
-            << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
+//            << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
+//            << "motox/VID_20140617_162058756_GRAY_ESCOLHA_GRAMA"
+//            << "motox/VID_20140617_162058756_GRAY_equalized"
+            << "motox/VID_20140617_162058756_GRAY_equalized_small_CURVA"
+//            << "motox/VID_20140617_162058756_GRAY_equalized_small_GRAMA_ESCOLHA"
+//            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA"
 //            << "motox/VID_20140617_163505406_GRAY"
 //            << "car_simulation/carro_stereo_2014-06-12-02-14-53_2"
 //            << "nao/nao2"
@@ -36,14 +41,15 @@ void ProcessThread::run()
 //            << "nao/naooo_2014-03-10-17-48-35_gray"
              ;
 
-//    int steps[] = {25,20,15,10,5,3,2,1};
-    int steps[] = {1};
-    for(int s = 0;s<1;s++)
+    //    int steps[] = {25,20,15,10,5,3,2,1};
+    int steps[] = {15,10,1};
+//    int steps[] = {15};
+    for(int s = 0;s<3;s++)
     {
         for(QStringList::iterator path = paths.begin(); path != paths.end(); path++)
         {
             QDir diretory;
-            QString sPath = savePath+*path + "/step_" + QString::number(steps[s]);
+            QString sPath = savePath+*path + "/step_eq_match_sift_" + QString::number(steps[s]);
             diretory.mkpath(sPath);
             gerarDadosCV(defaultPath+*path,sPath ,steps[s]);
 //            gerarDadosComLibviso(defaultPath+paths[0],sPath,steps[s]);

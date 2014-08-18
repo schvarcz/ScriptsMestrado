@@ -54,15 +54,19 @@ void MainWindow::on_pushButton_clicked()
     }
     else if (!ui->CBRobo->currentText().compare("Motox"))
     {
-        qDebug() << "MotoX"; //Copia do ardrone
+        qDebug() << "MotoX";
         // calibration parameters for sequence drone
-        param.calib.f  = 2.31584916e+03; // focal length in pixels
-        param.calib.cu = 1.00664394e+03; // principal point (u-coordinate) in pixels
-        param.calib.cv = 5.04108086e+02; // principal point (v-coordinate) in pixels
+//        param.calib.f  = 2.31584916e+03; // focal length in pixels
+//        param.calib.cu = 1.00664394e+03; // principal point (u-coordinate) in pixels
+//        param.calib.cv = 5.04108086e+02; // principal point (v-coordinate) in pixels
+
+        param.calib.f  = 1.31842535e+03; // focal length in pixels
+        param.calib.cu = 5.11004989e+02; // principal point (u-coordinate) in pixels
+        param.calib.cv = 2.35035536e+02; // principal point (v-coordinate) in pixels
     }
     else if (!ui->CBRobo->currentText().compare("Car"))
     {
-        qDebug() << "MotoX"; //Copia do ardrone
+        qDebug() << "MotoX"; //Copia do Motox
         // calibration parameters for sequence drone
         param.calib.f  = 2.31584916e+03; // focal length in pixels
         param.calib.cu = 1.00664394e+03; // principal point (u-coordinate) in pixels

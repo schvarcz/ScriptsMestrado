@@ -22,13 +22,13 @@ void MatcherCV::matchFeatures()
     }
 
 //    cout << "Double matching" << endl;
-//    vector<DMatch> matches1,matches2;
-//    flannMatcher.match(I1cd,I1pd, matches1);
-//    flannMatcher.match(I1pd,I1cd, matches2);
+    vector<DMatch> matches1,matches2;
+    flannMatcher.match(I1cd,I1pd, matches1);
+    flannMatcher.match(I1pd,I1cd, matches2);
 
-    vector<vector<DMatch> > matches1,matches2;
-    flannMatcher.knnMatch(I1cd, I1pd, matches1, 5);
-    flannMatcher.knnMatch(I1pd, I1cd, matches2, 5);
+//    vector<vector<DMatch> > matches1,matches2;
+//    flannMatcher.knnMatch(I1cd, I1pd, matches1, 5);
+//    flannMatcher.knnMatch(I1pd, I1cd, matches2, 5);
 //    flannMatcher.radiusMatch(I1cd, I1pd, matches1,300);
 //    flannMatcher.radiusMatch(I1pd,I1cd, matches2,300);
 

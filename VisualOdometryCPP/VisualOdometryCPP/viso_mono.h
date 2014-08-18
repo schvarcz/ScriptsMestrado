@@ -64,7 +64,7 @@ public:
   //                     an older coordinate system / time step than the previous one.
   // output: returns false if motion too small or an error occured
   bool process (uint8_t *I,int32_t* dims,bool replace=false);
-  bool process (Mat &I, bool replace);
+  bool process (Mat &I, bool replace=false);
 
 private:
 

@@ -30,7 +30,7 @@ VisualOdometry::VisualOdometry (parameters param) : param(param) {
     p_observe = 0;
     p_predict = 0;
     matcher   = new Matcher(param.match);
-    matcherCV   = new MatcherCV("SURF","SURF");
+    matcherCV   = new MatcherCV("SIFT","SIFT");
     Tr_delta  = Matrix::eye(4);
     Tr_valid  = false;
     srand(0);
