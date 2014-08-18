@@ -26,8 +26,11 @@ private:
     Mat I1cd, I1pd;
     FlannBasedMatcher flannMatcher;
 
+    vector<DMatch> twoWayMatchCloser(vector<vector<DMatch> > matches1, vector<vector<DMatch> > matches2);
+    vector<DMatch> twoWayMatchCloser(vector<DMatch> matches1, vector<DMatch> matches2);
     vector<DMatch> twoWayMatch(vector<vector<DMatch> > matches1, vector<vector<DMatch> > matches2);
     vector<DMatch> twoWayMatch(vector<DMatch> matches1, vector<DMatch> matches2);
+
 
     bool checkAcceptance(DMatch candidateTest, DMatch correspondentTest, float maxDist);
 };

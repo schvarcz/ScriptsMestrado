@@ -38,6 +38,7 @@ void MatcherCV::matchFeatures()
 
 
     vector<DMatch> good_matches = this->twoWayMatch(matches1, matches2);
+//    vector<DMatch> good_matches = this->twoWayMatchCloser(matches1, matches2);
 
     p_matched_2.clear();
     for(vector<DMatch>::iterator it = good_matches.begin();it != good_matches.end(); it++)
@@ -107,6 +108,60 @@ vector<DMatch> MatcherCV::twoWayMatch(vector<DMatch>matches1, vector<DMatch> mat
         }
     }
     return ret;
+}
+
+vector<DMatch> MatcherCV::twoWayMatchCloser(vector<vector<DMatch> > matches1, vector<vector<DMatch> > matches2)
+{
+    vector<DMatch> ret;
+
+    float maxDist=5000;
+    for(vector<vector<DMatch> >::iterator candidateTest = matches1.begin();candidateTest != matches1.end(); candidateTest++)
+    {
+        for(vector<DMatch>::iterator possibleMatch = candidateTest->begin();possibleMatch != candidateTest->end(); possibleMatch++)
+        {
+            maxDist = min(maxDist,possibleMatch->distance);
+        }
+    }
+    maxDist = max(10*maxDist,0.002F);
+
+    DMatch candidate;
+    for(vector<vector<DMatch> >::iterator it = matches1.begin();it != matches1.end(); it++)
+    {
+        bool found = false;
+        for(vector<DMatch>::iterator candidateTest = it->begin();candidateTest != it->end(); candidateTest++)
+        {
+            for(vector<DMatch>::iterator correspondentTest = matches2[candidateTest->trainIdx].begin();correspondentTest != matches2[candidateTest->trainIdx].end(); correspondentTest++)
+            {
+                if (
+                        this->checkAcceptance(*candidateTest, *correspondentTest, maxDist) &&
+                        (
+                            !found ||
+                            sqrt(
+                                pow(I1ckp[candidateTest->queryIdx].pt.x - I1pkp[candidateTest->trainIdx].pt.x,2)
+                                + pow(I1ckp[candidateTest->queryIdx].pt.y - I1pkp[candidateTest->trainIdx].pt.y,2))
+                            <
+                            sqrt(
+                                pow(I1ckp[candidate.queryIdx].pt.x - I1pkp[candidate.trainIdx].pt.x,2)
+                                + pow(I1ckp[candidate.queryIdx].pt.y - I1pkp[candidate.trainIdx].pt.y,2))
+                            ) &&
+                        true )
+                {
+                    found = true;
+                    candidate = *candidateTest;
+                }
+            }
+        }
+        //add na lista!
+        if (found)
+            ret.push_back(candidate);
+    }
+    return ret;
+}
+
+vector<DMatch> MatcherCV::twoWayMatchCloser(vector<DMatch>matches1, vector<DMatch> matches2)
+{
+    //Este método está aqui apenas para manter o padrão de nomes
+    return this->twoWayMatch(matches1, matches2);
 }
 
 bool MatcherCV::checkAcceptance(DMatch candidateTest, DMatch correspondentTest, float maxDist)
