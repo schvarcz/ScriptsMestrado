@@ -3,6 +3,14 @@ from math import sin,cos
 import numpy as np
 from matplotlib import pyplot as plt
 
+
+def rotMatrix2d(angle):
+    return np.matrix([
+                [cos(angle), -sin(angle), 0.],
+                [sin(angle), cos(angle), 0.],
+                [0., 0., 1.],
+            ])
+        
 movimentos = [
     [-6.397022, 1.581633, 0.000000],
     [-4.451613, 3.061224, 37.255003],
@@ -67,6 +75,32 @@ class Node(object):
         return self.position.tolist()
 
 
+def milfordRelax(pts):
+
+    delta_total = np.zeros(3)
+    for pt in pts:
+        sum_from = np.zeros(3)
+        for f,transition in pt.aresta_from:
+            sum_from += pt.position - f.position - transition
+            
+        sum_to = np.zeros(3)
+        for t,transition in pt.aresta_to:
+            sum_to += t.position - pt.position - transition
+        delta = .5*(sum_to - sum_from)
+        print "Position: ", pt.position
+        print "DELTA: ", delta
+        pt.position += delta
+        angle = -deg2rad(delta[2])
+        
+        for i in range(len(pt.aresta_to)):
+            t, transition = pt.aresta_to[i]
+            transition_new = (rotMatrix2d(angle) * np.matrix(transition).T).T.A.reshape((3,))
+            pt.aresta_to[i][1] = transition_new
+            node_to = pt.aresta_to[i][0]
+            index = node_to.aresta_from.index([pt, transition])
+            node_to.aresta_from[index][1] = transition_new
+        delta_total += delta
+    return abs(delta_total)
 
 xo,yo, angles = zip(*movimentos)
 
@@ -74,9 +108,9 @@ xo,yo, angles = zip(*movimentos)
 movimentos = [np.asarray(m) for m in movimentos]
 transitions = [ movimentos[i+1]-movimentos[i] for i in range(len(movimentos)-1)]
 conf = [0. for i in range(len(transitions))]
-#conf[15] = 5
-#conf[16] = 10
-#conf[17] = 20
+conf[15] = 5
+conf[16] = 10
+conf[17] = 20
 #transitions.append(movimentos[0]-movimentos[-2])
 
 pts = []
@@ -118,10 +152,11 @@ while True:
     plt.ylim(-10,10)
 #    plt.show()
     fig.canvas.draw()
-    fig.savefig("imgs/fig_{0:06d}.png".format(ite))
+#    fig.savefig("imgs/fig_{0:06d}.png".format(ite))
     fig.canvas.get_tk_widget().update() 
     print "iteration ",ite
-    for pt in pts:
+    delta_total = milfordRelax(pts)
+    for pt in []:#pts:
 #        x,y, angles = zip(*[pto.tolist() for pto in pts])
 #        x = list(x)
 #        y = list(y)
@@ -149,8 +184,8 @@ while True:
 #        print "SUM_FROM: ", sum_from
 #        print "TOTAL: ", sum_from + sum_to
 #        raw_input()
-#        delta = 0.5*pt.conf/20*(sum_from + sum_to)
-        delta = .5*(sum_to - sum_from)
+        delta = 0.5*pt.conf/20*(sum_from + sum_to)
+#        delta = .5*(sum_to - sum_from)
         print "Position: ", pt.position
         print "DELTA: ", delta
         pt.position += delta
@@ -174,11 +209,7 @@ while True:
             t, transition = pt.aresta_to[i]
 #            print transition, delta
 #            raw_input()
-            transition_new = (np.matrix([
-                [cos(angle), -sin(angle), 0.],
-                [sin(angle), cos(angle), 0.],
-                [0., 0., 1.],
-            ]) * np.matrix(transition).T).T.A.reshape((3,))
+            transition_new = (rotMatrix2d(angle) * np.matrix(transition).T).T.A.reshape((3,))
             pt.aresta_to[i][1] = transition_new
             node_to = pt.aresta_to[i][0]
             index = node_to.aresta_from.index([pt, transition])
