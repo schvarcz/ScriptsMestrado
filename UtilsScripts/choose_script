@@ -1,0 +1,22 @@
+#!/bin/bash
+folder=~/Dissertacao/datasets
+src_folder=$folder/motox/VID_20140617_162058756_GRAY_equalized_small/
+dst_folder=$folder/motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2/
+
+
+#rm $folder/motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2/* -r
+mkdir $dst_folder
+
+#for i in `seq 0 15 624`; do #região do corredor
+#for i in `seq 624 7 948`; do #região curva do corredor para a grama
+#for i in `seq 948 15 2330`; do #região da grama
+#for i in `seq 2330 7 2480`; do #região curva da grama para o 2nd corredor
+#for i in `seq 2480 15 2980`; do #região 2nd corredor
+#for i in `seq 2980 7 3210`; do #região 2nd corredor para 2nd grama
+#for i in `seq 3210 15 4435`; do #região 2nd corredor para 2nd grama
+#for i in `seq 4435 7 4660`; do #região 2nd grama para 1nd corredor novamente
+#for i in `seq 4660 15 5170 `; do #região 1nd corredor novamente
+#    cp $src_folder`printf "I1_%06d.png" $i` $dst_folder`printf "I1_%06d.png" $i`
+#done
+
+sh rename_images.sh $dst_folder

@@ -1,0 +1,52 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+from cv2 import *
+import os
+import sys
+
+def showHelp():
+    print """
+Convert to grayscale, equalize and reduce the image size by the half
+
+\t$ prepareToVO folderToProcess [folderToSave]
+
+          """
+    sys.exit()
+
+if len(sys.argv) < 2:
+    showHelp()
+
+
+for opt in sys.argv:
+    if opt in ["-h","--help"]:
+        showHelp()
+
+pathSave = pathOrigin = os.path.expanduser(sys.argv[1])
+
+if len(sys.argv) > 2:
+    pathSave = os.path.expanduser(sys.argv[2])
+
+if not os.path.exists(pathOrigin):
+    print "The origin folder doesn't exist!!!"
+    print "\tOrigin folder: ", pathOrigin
+    sys.exit()
+
+if not os.path.exists(pathSave):
+    os.mkdir(pathSave)
+
+print "Origin: ", pathOrigin
+print "Save path: ", pathSave
+
+for frame in sorted(os.listdir(pathOrigin)):
+    if frame.split(".")[-1] not in ["jpg","png","bmp","jpeg"]:
+        continue
+
+    print "Processing: ",frame
+    img = imread("{0}/{1}".format(pathOrigin,frame))
+
+    imgg = cvtColor(img,cv.CV_RGB2GRAY)
+    imgg = equalizeHist(imgg)
+    imgg = pyrDown(imgg)
+
+    imwrite("{0}/{1}.png".format(pathSave,".".join(frame.split(".")[:-1])),imgg)
+

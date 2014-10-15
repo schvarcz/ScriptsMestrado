@@ -1,0 +1,56 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+from cv2 import *
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import subplots,cm
+from matplotlib.gridspec import GridSpec
+import numpy as np, os, sys
+
+def showHelp():
+    print """
+Convert a video to images
+
+    $ video_to_img videoToProcess [folderToSave] [filePrefix]
+
+          """
+    sys.exit()
+
+
+if len(sys.argv) < 2:
+    showHelp()
+
+videoFile = os.path.expanduser(sys.argv[1])
+videoName = ".".join(videoFile.split("/")[-1].split(".")[:-1])
+videoPath = "/".join(videoFile.split("/")[:-1])
+
+if videoPath == "":
+    videoPath = "."
+pathToSave = videoPath +"/"+videoName
+filePrefix = "I_"
+
+if len(sys.argv) > 2:
+    pathToSave = os.path.expanduser(sys.argv[2])
+
+if len(sys.argv) > 3:
+    filePrefix = sys.argv[3]
+
+frame = 0
+
+print "Video file: ", videoFile
+print "Save path: ", pathToSave
+print "File name pattern: ", "{0}000000.png".format(filePrefix)
+
+video = VideoCapture(videoFile)
+if not os.path.exists(pathToSave):
+    os.mkdir(pathToSave)
+
+while (video.grab()):
+    print "Frame ", frame
+    b, img = video.retrieve()
+    
+    imgg = cvtColor(img,cv.CV_RGB2GRAY)
+    imgg = pyrDown(imgg)
+    imgg = equalizeHist(imgg)
+    imwrite("{0}/{1}{2:06d}.png".format(pathToSave,filePrefix,frame),imgg)
+    frame += 1
+

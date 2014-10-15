@@ -1,0 +1,29 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+from cv2 import *
+from os import listdir, path
+import sys
+
+def showHelp():
+    print """
+Reduce the size of image to half
+
+    $ imgs_small folderToProcess [folderToSave]
+
+          """
+    sys.exit()
+
+
+if len(sys.argv) < 2:
+    showHelp()
+
+pathsalvar = path = path.expanduser(sys.argv[1])
+if len(sys.argv) > 2:
+    pathsalvar = path.expanduser(sys.argv[2])
+
+for frame in listdir(path):
+    img = imread("{0}/{1}".format(path,frame))
+
+    imgg = pyrDown(img)
+
+    imwrite("{0}/{1}".format(pathsalvar,frame),imgg)
