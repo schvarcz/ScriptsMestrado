@@ -16,15 +16,31 @@ void MatcherCV::matchFeatures()
 //    cout << "Descriptors" << endl;
     descriptor->compute(I1c,I1ckp,I1cd);
 
-    if(I1pkp.size() == 0)
+    if(I1ppkp.size() == 0)
     {
         return;
     }
 
 //    cout << "Double matching" << endl;
-    vector<DMatch> matches1,matches2;
-    flannMatcher.match(I1cd,I1pd, matches1);
-    flannMatcher.match(I1pd,I1cd, matches2);
+    vector<DMatch>
+            matches1_2,
+            matches2_1,
+            matches1_3,
+            matches3_1,
+            matches2_3,
+            matches3_2;
+
+    flannMatcher.match(I1cd,I1pd, matches1_2);
+    flannMatcher.match(I1pd,I1cd, matches2_1);
+
+
+    cout << "Chave: " << I1cd.size() << "\t" << I1pd.size() << "\t" << matches1_2.size() << endl;
+
+    flannMatcher.match(I1pd,I1ppd, matches2_3);
+    flannMatcher.match(I1ppd,I1pd, matches3_2);
+
+    flannMatcher.match(I1cd,I1ppd, matches1_3);
+    flannMatcher.match(I1ppd,I1cd, matches3_1);
 
 //    vector<vector<DMatch> > matches1,matches2;
 //    flannMatcher.knnMatch(I1cd, I1pd, matches1, 5);
@@ -37,7 +53,10 @@ void MatcherCV::matchFeatures()
 //    cout << "Clear matches" << endl;
 
 
-    vector<DMatch> good_matches = this->twoWayMatch(matches1, matches2);
+    vector<DMatch> good_matches1_2 = this->twoWayMatch(matches1_2, matches2_1);
+    vector<DMatch> good_matches2_3 = this->twoWayMatch(matches2_3, matches3_2);
+    vector<DMatch> good_matches1_3 = this->twoWayMatch(matches1_3, matches3_1);
+    vector<DMatch> good_matches = this->threeWayMatch(good_matches1_2, good_matches2_3, good_matches1_3);
 //    vector<DMatch> good_matches = this->twoWayMatchCloser(matches1, matches2);
 
     p_matched_2.clear();
@@ -101,11 +120,13 @@ vector<DMatch> MatcherCV::twoWayMatch(vector<DMatch>matches1, vector<DMatch> mat
 
     for(vector<DMatch>::iterator candidateTest = matches1.begin();candidateTest != matches1.end(); candidateTest++)
     {
-        if (this->checkAcceptance(*candidateTest, matches2[candidateTest->trainIdx], maxDist))
+        if (!this->checkAcceptance(*candidateTest, matches2[candidateTest->trainIdx], maxDist))
         {
+            candidateTest->trainIdx = -1;
             //add na lista!
-            ret.push_back(*candidateTest);
+//            ret.push_back(*candidateTest);
         }
+        ret.push_back(*candidateTest);
     }
     return ret;
 }
@@ -164,13 +185,31 @@ vector<DMatch> MatcherCV::twoWayMatchCloser(vector<DMatch>matches1, vector<DMatc
     return this->twoWayMatch(matches1, matches2);
 }
 
+vector<DMatch> MatcherCV::threeWayMatch(vector<DMatch>matches1_2, vector<DMatch> matches2_3, vector<DMatch> matches1_3)
+{
+    vector<DMatch> ret;
+
+    for(vector<DMatch>::iterator candidateTest = matches1_2.begin();candidateTest != matches1_2.end(); candidateTest++)
+    {
+        if(
+                candidateTest->trainIdx != -1 &&
+                matches2_3[candidateTest->trainIdx].trainIdx != -1 &&
+                matches2_3[candidateTest->trainIdx].trainIdx == matches1_3[candidateTest->queryIdx].trainIdx
+                )
+        {
+            //add na lista!
+            ret.push_back(*candidateTest);
+        }
+    }
+    return ret;
+}
 bool MatcherCV::checkAcceptance(DMatch candidateTest, DMatch correspondentTest, float maxDist)
 {
     return  correspondentTest.trainIdx == candidateTest.queryIdx &&
-            candidateTest.distance <= maxDist &&
-            sqrt(
-                pow(I1ckp[candidateTest.queryIdx].pt.x - I1pkp[candidateTest.trainIdx].pt.x,2)
-                + pow(I1ckp[candidateTest.queryIdx].pt.y - I1pkp[candidateTest.trainIdx].pt.y,2)) <= 200 &&
+//            candidateTest.distance <= 40 &&
+//            sqrt(
+//                pow(I1ckp[candidateTest.queryIdx].pt.x - I1pkp[candidateTest.trainIdx].pt.x,2)
+//                + pow(I1ckp[candidateTest.queryIdx].pt.y - I1pkp[candidateTest.trainIdx].pt.y,2)) <= 500 &&
             true;
 }
 
@@ -178,6 +217,14 @@ void MatcherCV::pushBack(Mat &img, bool replace)
 {
     if (!replace)
     {
+        if(I1pkp.size() != 0)
+        {
+            I1pp = I1p;
+            I1ppkp.clear();
+            I1ppkp.swap(I1pkp);
+            I1pd.copyTo(I1ppd);
+        }
+
         I1p = I1c;
         I1pkp.clear();
         I1pkp.swap(I1ckp);

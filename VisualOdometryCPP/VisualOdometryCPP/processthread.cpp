@@ -24,13 +24,19 @@ void ProcessThread::run()
 //            << "drone/20140318_133931_gray"
 //            << "drone/20140327_135316_gray"
 //            << "drone/20140328_102444_gray"
+//            << "drone/video_20140327_135316"
+            << "drone/video_20140328_102444"
 //            << "motox/VID_20140617_162058756_GRAY"
 //            << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
 //            << "motox/VID_20140617_162058756_GRAY_ESCOLHA_GRAMA"
 //            << "motox/VID_20140617_162058756_GRAY_equalized"
-            << "motox/VID_20140617_162058756_GRAY_equalized_small_CURVA"
+//            << "motox/VID_20140617_162058756_GRAY_equalized_small"
+//            << "motox/VID_20140617_162058756_GRAY_CURVA"
+//            << "motox/VID_20140617_162058756_GRAY_small_CURVA"
+//            << "motox/VID_20140617_162058756_GRAY_equalized_small_CURVA"
 //            << "motox/VID_20140617_162058756_GRAY_equalized_small_GRAMA_ESCOLHA"
 //            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA"
+//            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2"
 //            << "motox/VID_20140617_163505406_GRAY"
 //            << "car_simulation/carro_stereo_2014-06-12-02-14-53_2"
 //            << "nao/nao2"
@@ -42,9 +48,9 @@ void ProcessThread::run()
              ;
 
     //    int steps[] = {25,20,15,10,5,3,2,1};
-    int steps[] = {15,10,1};
+    int steps[] = {1};
 //    int steps[] = {15};
-    for(int s = 0;s<3;s++)
+    for(int s = 0;s<1;s++)
     {
         for(QStringList::iterator path = paths.begin(); path != paths.end(); path++)
         {
@@ -199,7 +205,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
             qDebug() << "Processing: Frame: " << i << "/" << nFrames;
 
             // compute visual odometry
-            if (viso.process(img,replace && i!=step)) {
+            if (viso.process(img,replace && i!=step && i!=2*step)) {
 
                 // on success, update current pose
                 Matrix estimated = viso.getMotion();
@@ -241,6 +247,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
                 *features << it->u1p << "," << it->v1p << " ; " << it->u1c << ", " << it->v1c << endl;
             }
             cvtColor(img,img,CV_GRAY2RGB);
+            this->drawFeatures(img,viso.getFeaturesCV(), Scalar(255,0, 0));
             this->drawFeaturesCorrespondence(img,fts, Scalar(0,255,0), Scalar(255,0,255));
             this->drawFeaturesCorrespondence(img,viso.getInliers(), Scalar(0, 0, 255), Scalar(0,255,255));
 //            imshow("features",img);
@@ -249,7 +256,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
             imwrite((savePath+fileName).toStdString(),img);
             qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3];
 //            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
-            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << endl;
+            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << "," << img_file_name.toStdString() << endl;
 
             // release uint8_t buffers
             img.release();
@@ -272,5 +279,14 @@ void ProcessThread::drawFeaturesCorrespondence(Mat& img, vector<IMatcher::p_matc
         Point ptp(it->u1p,it->v1p);
         line(img,ptc,ptp,colorLine);
         circle(img,ptc,3,colorPoint, -1);
+    }
+}
+
+
+void ProcessThread::drawFeatures(Mat& img, vector<KeyPoint> fts, const Scalar& colorPoint)
+{
+    for (vector<KeyPoint>::iterator it = fts.begin(); it!=fts.end(); it++)
+    {
+        circle(img,it->pt,3,colorPoint, -1);
     }
 }

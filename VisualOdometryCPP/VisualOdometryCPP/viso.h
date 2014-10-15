@@ -115,8 +115,9 @@ public:
     os << p.val[2][0] << " " << p.val[2][1] << " "  << p.val[2][2]  << " "  << p.val[2][3];
     return os;
   }
-  
+
   std::vector<IMatcher::p_match> getFeatures(){ return this->p_matched; }
+  std::vector<KeyPoint> getFeaturesCV(){ return this->matcherCV->getFeatures(); }
 protected:
 
   // calls bucketing and motion estimation

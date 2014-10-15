@@ -22,7 +22,8 @@ SOURCES += main.cpp\
     filter.cpp \
     processthread.cpp \
     matchercv.cpp \
-    imatcher.cpp
+    imatcher.cpp \
+    robot.cpp
 
 HEADERS  += mainwindow.h \
     viso_stereo.h \
@@ -36,7 +37,8 @@ HEADERS  += mainwindow.h \
     filter.h \
     processthread.h \
     matchercv.h \
-    imatcher.h
+    imatcher.h \
+    robot.h
 
 FORMS    += mainwindow.ui
 

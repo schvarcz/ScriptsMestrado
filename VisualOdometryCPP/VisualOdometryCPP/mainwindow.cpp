@@ -40,9 +40,17 @@ void MainWindow::on_pushButton_clicked()
     {
         qDebug() << "Ardrone";
         // calibration parameters for sequence drone
-        param.calib.f  = 565.2659195; // focal length in pixels
-        param.calib.cu = 320.583306; // principal point (u-coordinate) in pixels
-        param.calib.cv = 164.804138; // principal point (v-coordinate) in pixels
+        param.calib.f  = 567.102880658; // focal length in pixels
+        param.calib.cu = 315.76714448; // principal point (u-coordinate) in pixels
+        param.calib.cv = 164.95995903; // principal point (v-coordinate) in pixels
+    }
+    else if (!ui->CBRobo->currentText().compare("Ardrone Half"))
+    {
+        qDebug() << "Ardrone half";
+        // calibration parameters for sequence drone
+        param.calib.f  = 206.533682058; // focal length in pixels
+        param.calib.cu = 140.81438384; // principal point (u-coordinate) in pixels
+        param.calib.cv = 78.91016624; // principal point (v-coordinate) in pixels
     }
     else if (!ui->CBRobo->currentText().compare("Rodrigo"))
     {
@@ -56,23 +64,17 @@ void MainWindow::on_pushButton_clicked()
     {
         qDebug() << "MotoX";
         // calibration parameters for sequence drone
-//        param.calib.f  = 2.31584916e+03; // focal length in pixels
-//        param.calib.cu = 1.00664394e+03; // principal point (u-coordinate) in pixels
-//        param.calib.cv = 5.04108086e+02; // principal point (v-coordinate) in pixels
-
-        param.calib.f  = 1.31842535e+03; // focal length in pixels
-        param.calib.cu = 5.11004989e+02; // principal point (u-coordinate) in pixels
-        param.calib.cv = 2.35035536e+02; // principal point (v-coordinate) in pixels
-    }
-    else if (!ui->CBRobo->currentText().compare("Car"))
-    {
-        qDebug() << "MotoX"; //Copia do Motox
-        // calibration parameters for sequence drone
         param.calib.f  = 2.31584916e+03; // focal length in pixels
         param.calib.cu = 1.00664394e+03; // principal point (u-coordinate) in pixels
         param.calib.cv = 5.04108086e+02; // principal point (v-coordinate) in pixels
     }
-
+    else if (!ui->CBRobo->currentText().compare("Motox Half"))
+    {
+        qDebug() << "MotoX half size";
+        param.calib.f  = 1.31842535e+03; // focal length in pixels
+        param.calib.cu = 5.11004989e+02; // principal point (u-coordinate) in pixels
+        param.calib.cv = 2.35035536e+02; // principal point (v-coordinate) in pixels
+    }
     // sequence directory
     QString dir = ui->LEDir->text(), filePattern = ui->LENamePattern->text();
     int step = ui->SBFrameStep->value();
