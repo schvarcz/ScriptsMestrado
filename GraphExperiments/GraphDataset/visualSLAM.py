@@ -35,6 +35,7 @@ class Node(object):
         self.imgName = imgName
         self.aresta_from = []
         self.aresta_to = []
+        self.conf = 1
         Node.nodes += 1
 
     def tolist(self):
@@ -61,15 +62,15 @@ class Graph(object):
             for t,transition in pt.aresta_to:
                 sum_to += t.pose - pt.pose - transition
             delta = .5*(sum_to - sum_from)
-            if pt.nodeid == 7:
-                print "Position: ", pt.pose
-                print "aresta_from: ", pt.aresta_from
-                print "aresta_to: ", pt.aresta_to
-                print "DELTA: ", delta, sum_to, sum_from
+            #if pt.nodeid == 7:
+            #    print "Position: ", pt.pose
+            #    print "aresta_from: ", pt.aresta_from
+            #    print "aresta_to: ", pt.aresta_to
+            #    print "DELTA: ", delta, sum_to, sum_from
             pt.pose += delta
-            roll = -np.deg2rad(delta[3])
-            pitch = -np.deg2rad(delta[4])
-            yaw = -np.deg2rad(delta[5])
+            roll = -np.deg2rad(0)#delta[3])
+            pitch = -np.deg2rad(0)#delta[5])
+            yaw = -np.deg2rad(delta[4])
 
             #####################
             # Update transition #
@@ -79,21 +80,55 @@ class Graph(object):
 
                 rot = np.matrix(np.eye(6,6))
                 rot[:3,:3] = rotMatrix3dZYX(yaw,pitch,roll)
-                transition_new = (rot * np.matrix(transition).T).T.A.reshape((6,))
+                transition_new = (rot * np.matrix(transition).T).T.A.reshape((6,)).tolist()
                 #transition_new = (rotMatrix2d(angle) * np.matrix(transition).T).T.A.reshape((3,))
                 pt.aresta_to[i][1] = transition_new
                 node_to = pt.aresta_to[i][0]
 
-                for index in range(len(node_to.aresta_from)):
-                    if node_to.aresta_from[index][0] == pt and (node_to.aresta_from[index][1] == transition).all():
-                        break
-                #index = node_to.aresta_from.index([pt, transition])
+                index = node_to.aresta_from.index([pt, transition])
                 node_to.aresta_from[index][1] = transition_new
             delta_total += delta
         return abs(delta_total)
 
     def relaxMine(self):
-        pass
+        delta_total = np.zeros(6)
+        maxConf = max([pt.conf for pt in self.nodes])
+        for pt in self.nodes:
+            sum_from = np.zeros(6)
+            for f,transition in pt.aresta_from:
+                sum_from += pt.pose - f.pose - transition
+
+            sum_to = np.zeros(6)
+            for t,transition in pt.aresta_to:
+                sum_to += t.pose - pt.pose - transition
+            delta = .5*pt.conf/maxConf*(sum_to - sum_from)
+            #if pt.nodeid == 7:
+            #    print "Position: ", pt.pose
+            #    print "aresta_from: ", pt.aresta_from
+            #    print "aresta_to: ", pt.aresta_to
+            #    print "DELTA: ", delta, sum_to, sum_from
+            pt.pose += delta
+            roll = -np.deg2rad(0)#delta[3])
+            pitch = -np.deg2rad(0)#delta[5])
+            yaw = -np.deg2rad(delta[4])
+
+            #####################
+            # Update transition #
+            #####################
+            for i in range(len(pt.aresta_to)):
+                t, transition = pt.aresta_to[i]
+
+                rot = np.matrix(np.eye(6,6))
+                rot[:3,:3] = rotMatrix3dZYX(yaw,pitch,roll)
+                transition_new = (rot * np.matrix(transition).T).T.A.reshape((6,)).tolist()
+                #transition_new = (rotMatrix2d(angle) * np.matrix(transition).T).T.A.reshape((3,))
+                pt.aresta_to[i][1] = transition_new
+                node_to = pt.aresta_to[i][0]
+
+                index = node_to.aresta_from.index([pt, transition])
+                node_to.aresta_from[index][1] = transition_new
+            delta_total += delta
+        return abs(delta_total)
 
     def revisited(self,newNode):
         ret = float("inf"), ""

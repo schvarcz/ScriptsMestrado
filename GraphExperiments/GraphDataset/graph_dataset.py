@@ -76,13 +76,14 @@ for matcher in matchers:
                     ssdResult = float("inf")
 
                     if j > 385:
-                        ssdResult, revisitedNode = graph.revisited(n)
+                        #ssdResult, revisitedNode = graph.revisited(n)
+                        ssdResult, revisitedNode = 50, graph[j-385]
 
                         if ssdResult < 40000000:
                             n = revisitedNode
 
                     if oldNode != None:
-                        transition = np.asarray(trans[j][:-1]) - np.asarray(trans[j-1][:-1])
+                        transition = (np.asarray(trans[j][:-1]) - np.asarray(trans[j-1][:-1])).tolist()
                         oldNode.aresta_to.append([n,transition])
                         n.aresta_from.append([oldNode,transition])
 
@@ -90,27 +91,31 @@ for matcher in matchers:
                         graph.append(n)
                         print "novo"
 
+                    if n.pose[4] > 0.04:
+                        n.conf = 4
                     print "Node: ", n.nodeid
 
                     oldNode = n
 
-                    graph.relaxMilford()
-                    robotPath = zip(*graph.tolist())
-                    img = cv2.imread(pathResultados+"/features/{0}/step{3}_{1}/I1_{2:06d}.png".format(path,step,j,matcher))
+                    if j>385:
+                        graph.relaxMine()
+                        robotPath = zip(*graph.tolist())
+                        img = cv2.imread(pathResultados+"/features/{0}/step{3}_{1}/I1_{2:06d}.png".format(path,step,j,matcher))
 
-                    plotVisualSLAM(robotPath, img, j, len(trans), plotLimits, "{0}/fig_{1:06d}.png".format(pathSalvar,j))
+                        plotVisualSLAM(robotPath, img, j, len(trans), plotLimits, "{0}/fig_{1:06d}.png".format(pathSalvar,j))
 
                     print j, " / ", len(trans)
 
                 ite = 0
                 delta_total = np.ones(3)
-                while(ite < 1000 and (delta_total[0] > 1e-3 or delta_total[1] > 1e-3 or delta_total[3] > 1e-3)):
+                while True: #(ite < 1000 and (delta_total[0] > 1e-3 or delta_total[1] > 1e-3 or delta_total[3] > 1e-3)):
                     ite += 1
-                    delta_total = graph.relaxMilford()
+                    print "Iteration: ", ite
+                    delta_total = graph.relaxMine()
                     robotPath = zip(*graph.tolist())
-                    img = cv2.imread(pathResultados+"/features/{0}/step{3}_{1}/I1_{2:06d}.png".format(path,step,j,matcher))
+                    img = cv2.imread(pathResultados+"/features/{0}/step{3}_{1}/I1_{2:06d}.png".format(path,step,j-1,matcher))
 
-                    plotVisualSLAM(robotPath, img, j, len(trans), plotLimits, "{0}/fig_{1:06d}.png".format(pathSalvar,j))
+                    plotVisualSLAM(robotPath, img, j+ite, len(trans), plotLimits, "{0}/fig_{1:06d}.png".format(pathSalvar,j+ite))
 
 
 
