@@ -102,12 +102,40 @@ def milfordRelax(pts):
         delta_total += delta
     return abs(delta_total)
 
+
+def mineRelax(pts):
+    delta_total = np.zeros(3)
+    totalConf = max([pt.conf for pt in pts])
+    for pt in pts:
+        sum_from = np.zeros(3)
+        for f,transition in pt.aresta_from:
+            sum_from += pt.position - f.position - transition
+
+        sum_to = np.zeros(3)
+        for t,transition in pt.aresta_to:
+            sum_to += t.position - pt.position - transition
+        delta = .5*pt.conf/totalConf*(sum_to - sum_from)
+        print "Position: ", pt.position
+        print "DELTA: ", delta
+        pt.position += delta
+        angle = -deg2rad(delta[2])
+
+        for i in range(len(pt.aresta_to)):
+            t, transition = pt.aresta_to[i]
+            transition_new = (rotMatrix2d(angle) * np.matrix(transition).T).T.A.reshape((3,))
+            pt.aresta_to[i][1] = transition_new
+            node_to = pt.aresta_to[i][0]
+            index = node_to.aresta_from.index([pt, transition])
+            node_to.aresta_from[index][1] = transition_new
+        delta_total += delta
+    return abs(delta_total)
+
 xo,yo, angles = zip(*movimentos)
 
 
 movimentos = [np.asarray(m) for m in movimentos]
 transitions = [ movimentos[i+1]-movimentos[i] for i in range(len(movimentos)-1)]
-conf = [0. for i in range(len(transitions))]
+conf = [5. for i in range(len(transitions))]
 conf[15] = 5
 conf[16] = 10
 conf[17] = 20
@@ -155,74 +183,16 @@ while True:
 #    fig.savefig("imgs/fig_{0:06d}.png".format(ite))
     fig.canvas.get_tk_widget().update() 
     print "iteration ",ite
-    delta_total = milfordRelax(pts)
-    for pt in []:#pts:
-#        x,y, angles = zip(*[pto.tolist() for pto in pts])
-#        x = list(x)
-#        y = list(y)
-#        x.append(x[0])
-#        y.append(y[0])
-
-#        fig.clf()
-#        plt.plot(x,y,"b")
-#        plt.plot(xo,yo,"g")
-#        print pt.nodeid
-#        fig.canvas.draw()
-#        fig.savefig("imgs/fig_{0:06d}.png".format(ite))
-#        fig.canvas.get_tk_widget().update() 
-#        ite +=1
-        sum_from = np.zeros(3)
-        for f,transition in pt.aresta_from:
-#            print "FROM: ", f.nodeid
-            sum_from += pt.position - f.position - transition
-            
-        sum_to = np.zeros(3)
-        for t,transition in pt.aresta_to:
-#            print "TO: ", t.nodeid
-            sum_to += t.position - pt.position - transition
-#            print "FROM: ", t.position, pt.position, transition
-#        print "SUM_FROM: ", sum_from
-#        print "TOTAL: ", sum_from + sum_to
-#        raw_input()
-        delta = 0.5*pt.conf/20*(sum_from + sum_to)
-#        delta = .5*(sum_to - sum_from)
-        print "Position: ", pt.position
-        print "DELTA: ", delta
-        pt.position += delta
-        angle = -deg2rad(delta[2])
-        
-#        for i in range(len(pt.aresta_from)):
-#            f, transition = pt.aresta_from[i]
-##            print transition, delta
-##            raw_input()
-#            transition_new = (np.matrix([
-#                [cos(angle), -sin(angle), 0.],
-#                [sin(angle), cos(angle), 0.],
-#                [0., 0., 1.],
-#            ]) * np.matrix(transition).T).T.A.reshape((3,))
-#            pt.aresta_from[i][1] = transition_new
-#            node_from = pt.aresta_from[i][0]
-#            index = node_from.aresta_to.index([pt, transition])
-#            node_from.aresta_to[index][1] = transition_new
-        
-        for i in range(len(pt.aresta_to)):
-            t, transition = pt.aresta_to[i]
-#            print transition, delta
-#            raw_input()
-            transition_new = (rotMatrix2d(angle) * np.matrix(transition).T).T.A.reshape((3,))
-            pt.aresta_to[i][1] = transition_new
-            node_to = pt.aresta_to[i][0]
-            index = node_to.aresta_from.index([pt, transition])
-            node_to.aresta_from[index][1] = transition_new
-        delta_total += delta
+    #delta_total = milfordRelax(pts)
+    delta_total = mineRelax(pts)
     delta_total = abs(delta_total)
 #    move = [-6., 6., 0.000000]-pts[0].position
 #    move[2] = 0.0
 #    for pt in pts:
 #        pt.position += move
     ite += 1
-#    if delta_total[0] < 1e-3 and delta_total[1] < 1e-3 or ite == 1000000000: #
-#        break
+    if delta_total[0] < 1e-3 and delta_total[1] < 1e-3 or ite == 1000000000: 
+        break
 
 
 
