@@ -25,7 +25,7 @@ void ProcessThread::run()
 //            << "drone/20140327_135316_gray"
 //            << "drone/20140328_102444_gray"
 //            << "drone/video_20140327_135316"
-            << "drone/video_20140328_102444"
+//            << "drone/video_20140328_102444"
 //            << "motox/VID_20140617_162058756_GRAY"
 //            << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
 //            << "motox/VID_20140617_162058756_GRAY_ESCOLHA_GRAMA"
@@ -38,6 +38,9 @@ void ProcessThread::run()
 //            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA"
 //            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2"
 //            << "motox/VID_20140617_163505406_GRAY"
+            << "motox/VID_20140617_162058756_ESCOLHA"
+//            << "motox/2014-11-04_ESCOLHA"
+//            << "motox/datasetCompleto"
 //            << "car_simulation/carro_stereo_2014-06-12-02-14-53_2"
 //            << "nao/nao2"
 //            << "nao/nao2_gray"
@@ -193,6 +196,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
         char base_name[256];
         sprintf(base_name, filePattern.toAscii(),i);
         QString img_file_name  = defaultPath + "/" + base_name;
+        qDebug() << img_file_name << endl;
         *features << "imagem " << i << endl;
 
         // catch image read/write errors here
