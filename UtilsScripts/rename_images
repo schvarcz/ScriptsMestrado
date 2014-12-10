@@ -1,6 +1,6 @@
 #!/bin/bash
 i=0
-for f in *.jpg; do
+for f in *.png; do
     echo Moving: $f
     mv $f `printf $1 $i`
     i=$(($i+1))

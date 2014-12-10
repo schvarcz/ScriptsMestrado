@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for f in * ; 
+do
+    convert $f -resize 64x36 -crop +0-4 $f
+done

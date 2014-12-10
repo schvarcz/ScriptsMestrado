@@ -1,0 +1,65 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+from cv2 import *
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import subplots,cm
+from matplotlib.gridspec import GridSpec
+import numpy as np, os, sys
+
+def showHelp():
+    print """
+Convert a video to images
+
+    $ video_to_img videoToProcess [folderToSave] [videoSaveName]
+
+          """
+    sys.exit()
+
+
+if len(sys.argv) < 2:
+    showHelp()
+
+videoFile = os.path.expanduser(sys.argv[1])
+videoName = ".".join(videoFile.split("/")[-1].split(".")[:-1])
+videoPath = "/".join(videoFile.split("/")[:-1])
+
+if videoPath == "":
+    videoPath = "."
+pathToSave = videoPath +"/"+videoName
+videoSaveName = videoName+"_vo.mpg"
+
+if len(sys.argv) > 2:
+    pathToSave = os.path.expanduser(sys.argv[2])
+
+if len(sys.argv) > 3:
+    videoSaveName = sys.argv[3]
+
+
+print "Video file: ", videoFile
+print "Save path: ", pathToSave
+print "Video saved: ", "{0}".format(videoPath+"/"+videoSaveName)
+
+video = VideoCapture(videoFile)
+
+fourcc = cv.CV_FOURCC('P','I','M','1')
+out = None
+
+if not os.path.exists(pathToSave):
+    os.mkdir(pathToSave)
+frame = 1
+while (video.grab() and frame <60):
+    b, img = video.retrieve()
+    
+    imgg = cvtColor(img,cv.CV_RGB2GRAY)
+    imgg = pyrDown(imgg)
+    imgg = equalizeHist(imgg)
+    print (imgg.shape[1], imgg.shape[0])
+    if out == None:
+        out = VideoWriter(videoPath+"/"+videoSaveName,fourcc, 20, (imgg.shape[1], imgg.shape[0]))
+        print "none ", out
+    
+    out.write(imgg)
+    frame += 1
+
+out.release()
+

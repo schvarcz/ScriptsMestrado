@@ -1,0 +1,17 @@
+#!/usr/bin/python
+from matplotlib import pyplot as plt
+import numpy as np
+from os import listdir
+
+recall = []
+for f in listdir("."):
+    recall.append(int(f[6:12]) - int(f[17:23]))
+
+falsePositive = 0
+for r in recall:
+    if r > 10:
+        falsePositive += 1
+print "falsePositive: " ,falsePositive
+plt.plot(recall)
+plt.ylim(-300,300)
+plt.show()
