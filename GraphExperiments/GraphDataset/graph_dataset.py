@@ -21,7 +21,8 @@ paths = [
 #             "motox/VID_20140617_162058756_GRAY_equalized_small_CURVA",
 #             "motox/VID_20140617_162058756_GRAY_equalized_small",
 #             "motox/VID_20140617_162058756_GRAY_equalized_ESCOLHA",
-             "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2",
+#             "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2",
+             "motox/VID_20140617_162058756_ESCOLHA",
 #             "motox/VID_20140617_162058756_GRAY_equalized_small_GRAMA_ESCOLHA",
 #             "motox/VID_20140617_162058756_GRAY_ESCOLHA_GRAMA",
 #            "nao/nao2",
@@ -51,7 +52,7 @@ steps = [1]#,2,3,5,10,15,20]
 
 pathResultados = os.path.expanduser("~/Dissertacao/OdometriaVisual/")
 
-
+ssd_conf = 90000000
 for matcher in matchers:
     for skip in [1]:
         for path in paths:
@@ -61,7 +62,7 @@ for matcher in matchers:
                 ##################
                 trans, (mx,nx), (my,ny), (mz,nz) = loadFromFile(pathResultados+"/features/{0}/step{3}_{1}/posicoes_{2}.csv".format(path,step,step,matcher))
 
-                pathSalvar = pathResultados+"/figures/{0}/step{3}_{1}/skip_{2}".format(path,step,skip,matcher)
+                pathSalvar = pathResultados+"/graphs/{0}/step{3}_{1}_ssd/skip_{2}".format(path,step,skip,matcher)
                 if(not os.path.exists(pathSalvar)):
                     os.makedirs(pathSalvar)
 
@@ -69,17 +70,17 @@ for matcher in matchers:
                 plotLimits = (mx,nx), (my,ny), (mz,nz)
 
                 oldNode = None
-                for j in xrange(0,len(trans),skip):
+                for j in xrange(0,421,skip):
 
                     n = Node(trans[j][:-1], trans[j][-1])
 
                     ssdResult = float("inf")
 
                     if j > 385:
-                        #ssdResult, revisitedNode = graph.revisited(n)
-                        ssdResult, revisitedNode = 50, graph[j-385]
+                        ssdResult, revisitedNode = graph.revisited(n)
+                        #ssdResult, revisitedNode = 50, graph[j-385]
 
-                        if ssdResult < 40000000:
+                        if ssdResult < ssd_conf:
                             n = revisitedNode
 
                     if oldNode != None:
@@ -87,7 +88,7 @@ for matcher in matchers:
                         oldNode.aresta_to.append([n,transition])
                         n.aresta_from.append([oldNode,transition])
 
-                    if ssdResult > 40000000:
+                    if ssdResult > ssd_conf:
                         graph.append(n)
                         print "novo"
 
@@ -102,7 +103,7 @@ for matcher in matchers:
                         robotPath = zip(*graph.tolist())
                         img = cv2.imread(pathResultados+"/features/{0}/step{3}_{1}/I1_{2:06d}.png".format(path,step,j,matcher))
 
-                        plotVisualSLAM(robotPath, img, j, len(trans), plotLimits, "{0}/fig_{1:06d}.png".format(pathSalvar,j))
+                        plotVisualSLAM(robotPath, img, j, len(trans), plotLimits)#, "{0}/fig_{1:06d}.png".format(pathSalvar,j))
 
                     print j, " / ", len(trans)
 
