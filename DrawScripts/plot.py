@@ -21,6 +21,8 @@ paths = [
 #            "drone/20140318_133931_gray",
 #            "drone/20140327_135316_gray",
 #            "drone/20140328_102444_gray",
+             "motox/VID_20140617_162058756_ESCOLHA",
+#             "motox/2014-11-04_ESCOLHA",
 #             "motox/VID_20140617_163505406_GRAY",
 #             "motox/VID_20140617_162058756_GRAY",
 #             "motox/VID_20140617_162058756_GRAY_ESCOLHA",
@@ -30,7 +32,7 @@ paths = [
 #             "motox/VID_20140617_162058756_GRAY_equalized_small_CURVA",
 #             "motox/VID_20140617_162058756_GRAY_equalized_small",
 #             "motox/VID_20140617_162058756_GRAY_equalized_ESCOLHA",
-             "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2",
+#             "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2",
 #             "motox/VID_20140617_162058756_GRAY_equalized_small_GRAMA_ESCOLHA",
 #             "motox/VID_20140617_162058756_GRAY_ESCOLHA_GRAMA",
 #            "nao/nao2",
@@ -67,7 +69,7 @@ for matcher in matchers:
                 mx = my = mz = float("inf")
                 nx = ny = nz = float("-inf")
                 for line in csv.reader(file(pathResultados+"/features/{0}/step{3}_{1}/posicoes_{2}.csv".format(path,step,step,matcher)),delimiter=','):
-                    t = [float(l) for l in line]
+                    t = [float(l) for l in line[:-1]]
                     t,r = t[:3],t[3:]
 
                     alpha, gama, beta  = r
@@ -104,7 +106,7 @@ for matcher in matchers:
                     gs = GridSpec(3,2)
                     #ax1 = plt.subplot(gs[0,1:])
                     ax2 = plt.subplot(gs[:-1,1])
-                    ax3 = plt.subplot(gs[0:,0])#, projection='3d')
+                    ax3 = plt.subplot(gs[0:,0]) #, projection='3d')
                     ax4 = plt.subplot(gs[-1,1])
                     #f, ((ax1,ax2),(ax3,ax4)) = subplots(2,2)
                     try:
