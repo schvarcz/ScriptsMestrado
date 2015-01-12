@@ -24,5 +24,7 @@ imageFile = os.path.expanduser(sys.argv[1])
 img = imread(imageFile)
 plt.imshow(img)
 plt.colorbar()
+plt.xlabel("Test")
+plt.ylabel("Query")
 plt.show()
 
