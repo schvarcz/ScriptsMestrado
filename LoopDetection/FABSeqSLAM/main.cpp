@@ -567,7 +567,7 @@ Mat openFABMAP(Mat queryImageDescs,
     fabmap->compare(queryImageDescs, testImageDescs, matches);
     cout.precision(3);
     for(l = matches.begin(); l != matches.end(); l++) {
-        confusion_mat.at<double>(l->queryIdx, l->imgIdx) = l->likelihood;
+        confusion_mat.at<double>(l->queryIdx, l->imgIdx) = l->match;
     }
     cout.precision(0);
     return confusion_mat;
@@ -606,6 +606,9 @@ int openFABMAP(string TestPath,
                                 fabmap);
 
         cout << "Saving results: " << CorrespondenceImageResults << endl;
+        double ma, mi;
+        minMaxLoc(result,&mi,&ma);
+        result = 255*(result - mi)/ma;
         imwrite(CorrespondenceImageResults,result);
 
     }
