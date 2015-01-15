@@ -1060,9 +1060,9 @@ vector<Mat> loadDatasetFromVideo( string path ) {
     return images;
 }
 
-void ShowLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, string ResultsPath)
+void ShowLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, Mat CorrespondenceImage, string ResultsPath)
 {
-
+    cvtColor(CorrespondenceImage,CorrespondenceImage,CV_GRAY2RGB);
     CvFont font = cvFontQt("Helvetica", 20.0, CV_RGB(255, 0, 0) );
     namedWindow("");
     moveWindow("", 0, 0);
@@ -1109,7 +1109,9 @@ void ShowLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
             imwrite(name,appended);
         }
 
+        circle(CorrespondenceImage,Point(index,x),1,Scalar(255,0,0),-1);
         imshow( "", appended );
+        imshow("matches", CorrespondenceImage);
         waitKey(500);
     }
 }
@@ -1133,10 +1135,11 @@ void RunSeqSLAM(FileStorage fs)
 
     /* Find the matches */
     Mat matches = seq_slam.apply( preprocessed_new, preprocessed_old );
+    Mat CorrespondenceImage = seq_slam.getCorrespondenceMatrix();
 
-    imwrite(CorrespondenceImageResults,seq_slam.getCorrespondenceMatrix());
+    imwrite(CorrespondenceImageResults,CorrespondenceImage);
 
-    ShowLoopsDetections(matches, newImages, oldImages, ResultsPath);
+    ShowLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath);
 }
 
 int RunFABMapSeqSLAM(FileStorage fs)
@@ -1178,10 +1181,11 @@ int RunFABMapSeqSLAM(FileStorage fs)
 
     SchvaczSLAM schvarczSlam(detector,extractor,vocab);
     Mat matches = schvarczSlam.apply(newImages,oldImages);
+    Mat CorrespondenceImage = schvarczSlam.getCorrespondenceMatrix();
 
-    imwrite(CorrespondenceImageResults,255*schvarczSlam.getCorrespondenceMatrix());
+    imwrite(CorrespondenceImageResults,255*CorrespondenceImage);
 
-    ShowLoopsDetections(matches, newImages, oldImages, ResultsPath);
+    ShowLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath);
     return 0;
 }
 
