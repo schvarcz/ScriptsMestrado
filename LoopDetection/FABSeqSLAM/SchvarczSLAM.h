@@ -32,11 +32,14 @@ public:
 
     pair<int, double> findMatch( Mat& diff_mat, int N, int matching_dist );
     Mat findMatches( Mat& diff_mat, int matching_dist = 10 );
+    Mat findMatch2( Mat& re );
+    Mat findMatches2( Mat& diff_mat );
 
     Mat generateVocabulary(vector<Mat> train_set);
 
     Mat generateBOWImageDescs(vector<Mat> dataset);
     Mat getCorrespondenceMatrix(){ return occurrence; }
+
 
 private:
     Ptr<FeatureDetector> detector;

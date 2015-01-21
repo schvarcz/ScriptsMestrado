@@ -1060,7 +1060,7 @@ vector<Mat> loadDatasetFromVideo( string path ) {
     return images;
 }
 
-void ShowLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, Mat CorrespondenceImage, string ResultsPath)
+void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold = 0.99)
 {
     cvtColor(CorrespondenceImage,CorrespondenceImage,CV_GRAY2RGB);
     CvFont font = cvFontQt("Helvetica", 20.0, CV_RGB(255, 0, 0) );
@@ -1068,7 +1068,6 @@ void ShowLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
     moveWindow("", 0, 0);
 
     char temp[100], name[100];
-    float threshold = 0.99;
 
     float * index_ptr = matches.ptr<float>(0);
     float * score_ptr = matches.ptr<float>(1);
@@ -1103,6 +1102,7 @@ void ShowLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
         addText( appended, temp, Point( 10, 20 ), font );
 
 
+        cout << score_ptr[x];
         if( score_ptr[x] < threshold )
         {
             sprintf( name, "%s/matches/I_new_%06d_old_%06d.png", ResultsPath.c_str(), x,index );
@@ -1139,12 +1139,47 @@ void RunSeqSLAM(FileStorage fs)
 
     imwrite(CorrespondenceImageResults,CorrespondenceImage);
 
-    ShowLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath);
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.99);
+}
+
+int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
+{
+    string TestPath = fs["FilePaths"]["TestPath"],
+            QueryPath = fs["FilePaths"]["QueryPath"],
+            ResultsPath = fs["SeqSLAM"]["ResultsPath"],
+            CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"];
+
+    Ptr<FeatureDetector> detector = generateDetector(fs);
+    if(!detector) {
+        cerr << "Feature Detector error" << endl;
+        return -1;
+    }
+
+    Ptr<DescriptorExtractor> extractor = generateExtractor(fs);
+    if(!extractor) {
+        cerr << "Feature Extractor error" << endl;
+        return -1;
+    }
+
+    vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
+    vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
+    cout << newImages.size() << " - " << oldImages.size();
+
+    SchvaczSLAM schvarczSlam(detector,extractor);
+
+    Mat CorrespondenceImage = imread(CorrespondenceImageResults);
+    cvtColor(CorrespondenceImage,CorrespondenceImage,CV_RGB2GRAY);
+    //CorrespondenceImage = CorrespondenceImage(Rect(0,55,65, CorrespondenceImage.rows-55));
+
+    Mat matches = schvarczSlam.findMatches2(CorrespondenceImage);
+
+    cout << matches.rows << " - " << matches.cols << endl;
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 1500);
+    return 0;
 }
 
 int RunFABMapSeqSLAM(FileStorage fs)
 {
-
     string TestPath = fs["FilePaths"]["TestPath"],
             QueryPath = fs["FilePaths"]["QueryPath"],
             ResultsPath = fs["SeqSLAM"]["ResultsPath"],
@@ -1185,7 +1220,8 @@ int RunFABMapSeqSLAM(FileStorage fs)
 
     imwrite(CorrespondenceImageResults,255*CorrespondenceImage);
 
-    ShowLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath);
+    cout << matches.rows << " - " << matches.cols << endl;
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 1500);
     return 0;
 }
 
@@ -1340,6 +1376,8 @@ int main(int argc, const char * argv[])
         RunSeqSLAM(fs);
     else if ( SLAMType == "FABMap" )
         RunFABMAP(fs);
+    else if ( SLAMType == "FABSeqSLAMOnlyMatches" )
+        RunFABMapSeqSLAMOnlyMatches(fs);
 
     return 0;
 }

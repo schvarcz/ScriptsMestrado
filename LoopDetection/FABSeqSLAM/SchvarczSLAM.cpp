@@ -25,7 +25,7 @@ void SchvaczSLAM::init()
 Mat SchvaczSLAM::apply(vector<Mat> QueryImages, vector<Mat> TestImages)
 {
     occurrence = calcDifferenceMatrix(QueryImages, TestImages);
-    return findMatches(occurrence);
+    return findMatches2(occurrence);
 }
 
 Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &TestImages)
@@ -76,6 +76,7 @@ Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset)
 
     return schvarczSLAMTrainData;
 }
+
 
 /**
  * Given the difference matrix, and N index, find the image that
@@ -176,4 +177,81 @@ Mat SchvaczSLAM::findMatches( Mat& diff_mat, int matching_dist ) {
     }
 
     return matches;
+}
+
+Mat SchvaczSLAM::findMatch2( Mat& re )
+{
+    float retmin = numeric_limits<float>::max();
+    float retdeg = 0;
+    for(float deg = 0.0; deg<90.0; deg+=0.5)
+    {
+        float soma = 0;
+        for(int y=0;y<=re.rows; y++)
+        {
+            int x = y*cos(deg*M_PI/180);
+            soma += (int)re.at<uchar>(Point(x,y));
+        }
+        if (soma < retmin)
+        {
+            retmin = soma;
+            retdeg = deg;
+        }
+    }
+
+    float rety = re.rows/2;
+    float retx = rety*cos(retdeg*M_PI/180);
+
+    Mat ret(1,3,CV_32FC1,Scalar(255));
+    ret.at<float>(0,0) = retmin;
+    ret.at<float>(0,1) = retx;
+    ret.at<float>(0,2) = rety;
+    return ret;
+}
+
+Mat SchvaczSLAM::findMatches2( Mat& diff_mat )
+{
+    Mat diff_mat3C;
+    cvtColor(diff_mat,diff_mat3C,CV_GRAY2BGR);
+    Mat matches;//(5,2,CV_32F,Scalar(0));
+    for (int i = 0;i<RWindow/2;i++)
+    {
+        Mat match(1,2,CV_32F,Scalar(numeric_limits<float>::max()));
+        matches.push_back(match);
+    }
+    for(int y=0; y<=diff_mat.rows-RWindow; y++)
+    {
+        float matchSum = numeric_limits<float>::max();
+        Mat match(1,2,CV_32F);
+        for(int x=0; x<=diff_mat.cols-RWindow; x++)
+        {
+            Rect roi(x, y, RWindow, RWindow);
+            Mat re = diff_mat(roi);
+            //Mat analyze;
+            //diff_mat3C.copyTo(analyze);
+            //rectangle(analyze,roi,Scalar(255,0,0));
+
+            //imshow("Analisando", re);
+            //imshow("Matches",analyze);
+            //waitKey(33);
+            Mat matchCandidate = findMatch2(re);
+            if (matchCandidate.at<float>(0) < matchSum)
+            {
+                matchSum = matchCandidate.at<float>(0);
+                match.at<float>(0) = (int)(matchCandidate.at<float>(1)+x);
+                match.at<float>(1) = matchSum; //matchCandidate.at<float>(2)+y;
+            }
+        }
+
+        matches.push_back(match);
+        //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
+        //circle(diff_mat3C,Point(match.at<float>(0),match.at<float>(1)),1,Scalar(255,0,0),-1);
+    }
+    for (int i = 0;i<RWindow/2;i++)
+    {
+        Mat match(1,2,CV_32F,Scalar(numeric_limits<float>::max()));
+        matches.push_back(match);
+    }
+    //imshow("Matches2",diff_mat3C);
+    //waitKey();
+    return matches.t();
 }
