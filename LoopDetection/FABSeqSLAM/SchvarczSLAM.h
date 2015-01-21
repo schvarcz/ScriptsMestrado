@@ -19,12 +19,16 @@
 using namespace std;
 using namespace cv;
 
+#define BOW_NORM 1
+#define BOW_FREQ 2
+#define BOW_TFIDF_FREQ 3
+#define BOW_TFIDF_NORM 3
 
 class SchvaczSLAM
 {
 public:
     SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor);
-    SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab);
+    SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab, Mat BOWIDFWeights);
 
     void init();
     Mat apply(vector<Mat> QueryImages, vector<Mat> TestImages);
@@ -37,14 +41,14 @@ public:
 
     Mat generateVocabulary(vector<Mat> train_set);
 
-    Mat generateBOWImageDescs(vector<Mat> dataset);
+    Mat generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE = BOW_NORM);
     Mat getCorrespondenceMatrix(){ return occurrence; }
 
 
 private:
     Ptr<FeatureDetector> detector;
     Ptr<DescriptorExtractor> extractor;
-    Mat vocab, occurrence;
+    Mat vocab, occurrence, BOWIDFWeights;
     int RWindow;
     float minVelocity;
     float maxVelocity;

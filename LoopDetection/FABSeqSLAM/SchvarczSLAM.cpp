@@ -7,10 +7,11 @@ SchvaczSLAM::SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor>
     init();
 }
 
-SchvaczSLAM::SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab):
+SchvaczSLAM::SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab, Mat BOWIDFWeights):
     detector(detector),
     extractor(extractor),
-    vocab(vocab)
+    vocab(vocab),
+    BOWIDFWeights(BOWIDFWeights)
 {
     init();
 }
@@ -30,10 +31,11 @@ Mat SchvaczSLAM::apply(vector<Mat> QueryImages, vector<Mat> TestImages)
 
 Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &TestImages)
 {
-    Mat BOWQuery = generateBOWImageDescs(QueryImages);
-    Mat BOWTest = generateBOWImageDescs(TestImages);
+    Mat BOWQuery = generateBOWImageDescs(QueryImages,BOW_TFIDF_NORM);
+    Mat BOWTest = generateBOWImageDescs(TestImages,BOW_TFIDF_NORM);
 
-
+    cout << BOWQuery.rows << " x " << BOWQuery.cols << endl;
+    cout << BOWTest.rows << " x " << BOWTest.cols << endl;
     Mat occurrence  = BOWQuery * BOWTest.t();
 
     double mi, ma;
@@ -45,7 +47,7 @@ Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &Tes
     return occurrence;
 }
 
-Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset)
+Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE)
 {
     //use a FLANN matcher to generate bag-of-words representations
     Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("FlannBased");
@@ -62,10 +64,38 @@ Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset)
 
     for(vector<Mat>::iterator it = dataset.begin(); it != dataset.end(); it++)
     {
+        vector< vector< int > > pointIdxsOfClusters;
         detector->detect(*it, kpts);
-        bide.compute(*it, kpts, bow);
+        bide.compute(*it, kpts, bow, &pointIdxsOfClusters);
 
-        schvarczSLAMTrainData.push_back(bow);
+        if (BOW_TYPE == BOW_NORM)
+        {
+            schvarczSLAMTrainData.push_back(bow);
+        }
+        else if (BOW_TYPE == BOW_FREQ)
+        {
+            Mat bow2(1,pointIdxsOfClusters.size(),CV_32F,Scalar(0));
+            for (int i =0; i < pointIdxsOfClusters.size();i++)
+            {
+                bow2.at<float>(0,i) = (float)pointIdxsOfClusters[i].size();
+            }
+            schvarczSLAMTrainData.push_back(bow2);
+        }
+        else if (BOW_TYPE == BOW_TFIDF_NORM)
+        {
+            multiply(bow,BOWIDFWeights,bow);
+            schvarczSLAMTrainData.push_back(bow);
+        }
+        else if (BOW_TYPE == BOW_TFIDF_FREQ)
+        {
+            Mat bow2(1,pointIdxsOfClusters.size(),CV_32F,Scalar(0));
+            for (int i =0; i < pointIdxsOfClusters.size();i++)
+            {
+                bow2.at<float>(0,i) = (float)pointIdxsOfClusters[i].size();
+            }
+            multiply(bow2,BOWIDFWeights,bow2);
+            schvarczSLAMTrainData.push_back(bow2);
+        }
 
         cout << "\r " << kpts.size() << " keypoints detected... " << 100.0 * ((float)(it- dataset.begin()) /
                               (float)(dataset.end()-dataset.begin())) << "%             ";

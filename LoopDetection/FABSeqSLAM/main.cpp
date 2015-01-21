@@ -387,6 +387,67 @@ int generateBOWImageDescs(string dataPath,
 /*
 generate FabMap bag-of-words data : an image descriptor for each frame
 */
+int generateBOWIDFWeights(string bowImageDescPath,
+                             string bowIDFWeightsPath)
+{
+
+    FileStorage fs;
+
+    //ensure not overwriting training data
+    ifstream checker;
+    checker.open(bowIDFWeightsPath.c_str());
+    if(checker.is_open()) {
+        cerr << bowIDFWeightsPath << ": FabMap BOW IDF Weights Data already present" << endl;
+        checker.close();
+        return -1;
+    }
+
+    //load vocabulary
+    cout << "Loading BOWImageDesc" << endl;
+    fs.open(bowImageDescPath, FileStorage::READ);
+    Mat bowImageDesc;
+    fs["BOWImageDescs"] >> bowImageDesc;
+    if (bowImageDesc.empty()) {
+        cerr << bowImageDescPath << ": BOWImageDesc not found" << endl;
+        return -1;
+    }
+    fs.release();
+
+
+    //extract image descriptors
+    Mat BOWIDFWeights;
+    cout << "Extracting Bag-of-words IDF Weights" << endl;
+
+    cout << "Cols " << bowImageDesc.cols << " - Rows " << bowImageDesc.rows << endl;
+
+    for(int indexWord = 0; indexWord < bowImageDesc.cols; indexWord++)
+    {
+        int occurrence = 0;
+        for(int indexDocument = 0; indexDocument < bowImageDesc.rows; indexDocument++)
+        {
+            if (bowImageDesc.at<float>(indexDocument,indexWord) != 0)
+                occurrence++;
+        }
+        cout << "\r"<<  indexWord << "° Word " << 100.0*indexWord/bowImageDesc.cols << "%                  ";
+        fflush(stdout);
+        float idf = log(bowImageDesc.rows/occurrence);
+        BOWIDFWeights.push_back(idf);
+    }
+
+    cout << "Done                                       " << endl;
+
+
+    //save training data
+    fs.open(bowIDFWeightsPath, FileStorage::WRITE);
+    fs << "BOWIDFWeights" << BOWIDFWeights;
+    fs.release();
+
+    return 0;
+}
+
+/*
+generate FabMap bag-of-words data : an image descriptor for each frame
+*/
 Mat generateBOWImageDescs(string dataPath,
                               Mat vocab,
                               Ptr<FeatureDetector> &detector,
@@ -1184,7 +1245,8 @@ int RunFABMapSeqSLAM(FileStorage fs)
             QueryPath = fs["FilePaths"]["QueryPath"],
             ResultsPath = fs["SeqSLAM"]["ResultsPath"],
             CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"],
-            vocabPath = fs["FilePaths"]["Vocabulary"];
+            vocabPath = fs["FilePaths"]["Vocabulary"],
+            bowIDFWeightsPath = fs["FilePaths"]["IDFWeights"];
 
     Ptr<FeatureDetector> detector = generateDetector(fs);
     if(!detector) {
@@ -1211,10 +1273,22 @@ int RunFABMapSeqSLAM(FileStorage fs)
     }
     fs.release();
 
+
+    //load vocabulary
+    cout << "Loading BOWIDFWeights" << endl;
+    fs.open(bowIDFWeightsPath, FileStorage::READ);
+    Mat bowIDFWeights;
+    fs["BOWIDFWeights"] >> bowIDFWeights;
+    if (bowIDFWeights.empty()) {
+        cerr << bowIDFWeightsPath << ": BOWIDFWeights not found" << endl;
+        return -1;
+    }
+    fs.release();
+
     vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
     vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
 
-    SchvaczSLAM schvarczSlam(detector,extractor,vocab);
+    SchvaczSLAM schvarczSlam(detector,extractor,vocab,bowIDFWeights.t());
     Mat matches = schvarczSlam.apply(newImages,oldImages);
     Mat CorrespondenceImage = schvarczSlam.getCorrespondenceMatrix();
 
@@ -1282,6 +1356,11 @@ int RunFABMAP(FileStorage fs)
                                        fs["FilePaths"]["TrainImagDesc"],
                                        fs["FilePaths"]["Vocabulary"], detector, extractor,
                                        fs["BOWOptions"]["MinWords"]);
+
+    }
+    else if (function == "GenerateIDFTrainData") {
+        result = generateBOWIDFWeights(fs["FilePaths"]["TrainImagDesc"],
+                                       fs["FilePaths"]["IDFWeights"]);
 
     } else if (function == "TrainChowLiuTree") {
         result = trainChowLiuTree(fs["FilePaths"]["ChowLiuTree"],
