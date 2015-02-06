@@ -56,6 +56,7 @@ private:
     int RWindow;
     float minVelocity;
     float maxVelocity;
+    float maxVar;
     int BOWType;
 };
 

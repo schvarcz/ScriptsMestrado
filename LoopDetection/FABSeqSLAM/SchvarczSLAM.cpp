@@ -22,6 +22,7 @@ void SchvaczSLAM::init()
     minVelocity         = 0.8;
     maxVelocity         = 1.2;
     RWindow             = 20;
+    maxVar              = 0.7;
 }
 
 Mat SchvaczSLAM::apply(vector<Mat> QueryImages, vector<Mat> TestImages)
@@ -162,7 +163,7 @@ pair<int, double> SchvaczSLAM::findMatch( Mat& diff_mat, int N, int matching_dis
 
             for( int col = 0; col < idx_mat.cols; col++ ){
                 int idx = idx_mat.at<int>(row, col);
-                sum += diff_mat.at<float>( idx % y_max, idx / y_max );
+                sum += diff_mat.at<float>( idx / y_max, idx % y_max );
             }
             min_sum = MIN( min_sum, sum );
         }
@@ -344,7 +345,7 @@ Mat SchvaczSLAM::findMatches3( Mat& diff_mat )
 //            imshow("Matches",analyze);
 //            waitKey(33);
 
-            if (reMean.val[0] > 0.70)
+            if (reMean.val[0] > maxVar)
             {
                 Mat matchCandidate = findMatch3(re);
                 if (matchCandidate.at<float>(0) < matchSum)

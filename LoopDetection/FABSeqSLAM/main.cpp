@@ -1229,6 +1229,8 @@ int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
             ResultsPath = fs["SeqSLAM"]["ResultsPath"],
             CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"];
 
+    float threshold = fs["SchvarczSLAM"]["Threshold"];
+
     Ptr<FeatureDetector> detector = generateDetector(fs);
     if(!detector) {
         cerr << "Feature Detector error" << endl;
@@ -1254,7 +1256,7 @@ int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
     Mat matches = schvarczSlam.findMatches3(CorrespondenceImage);
 
     cout << matches.rows << " - " << matches.cols << endl;
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.7);
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
     return 0;
 }
 
@@ -1266,6 +1268,8 @@ int RunFABMapSeqSLAM(FileStorage fs)
             CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"],
             vocabPath = fs["FilePaths"]["Vocabulary"],
             bowIDFWeightsPath = fs["FilePaths"]["IDFWeights"];
+
+    float threshold = fs["SchvarczSLAM"]["Threshold"];
 
     Ptr<FeatureDetector> detector = generateDetector(fs);
     if(!detector) {
@@ -1319,7 +1323,7 @@ int RunFABMapSeqSLAM(FileStorage fs)
     imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
     cout << matches.rows << " - " << matches.cols << endl;
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.55);
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
     return 0;
 }
 
