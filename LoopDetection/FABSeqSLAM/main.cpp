@@ -821,6 +821,18 @@ Ptr<DescriptorExtractor> generateExtractor(FileStorage &fs)
 }
 
 
+int generatorBOWType(string BOWSType)
+{
+    if (BOWSType == "BOW_NORM")
+        return BOW_NORM;
+    if (BOWSType == "BOW_FREQ")
+        return BOW_FREQ;
+    if (BOWSType == "BOW_TFIDF_FREQ")
+        return BOW_TFIDF_FREQ;
+    if (BOWSType == "BOW_TFIDF_NORM")
+        return BOW_TFIDF_NORM;
+}
+
 
 /*
 create an instance of a FabMap class with the options given in the settings file
@@ -1114,6 +1126,7 @@ vector<Mat> loadDatasetFromVideo( string path ) {
 
         Mat save;
         frame.copyTo(save);
+        //cvtColor(frame,save,CV_RGB2GRAY);
         images.push_back( save );
     }
     cout << "Done" << endl;
@@ -1149,7 +1162,12 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
         newImages[x].copyTo( Mat(appended, Rect(0, 0, appended.cols/2, appended.rows) ));
 
         if( score_ptr[x] < threshold )
+        {
             oldImages[index].copyTo( Mat(appended, Rect(appended.cols/2, 0, appended.cols/2, appended.rows) ));
+            circle(CorrespondenceImage,Point(index,x),1,Scalar(255,0,0),-1);
+        }
+        else
+            circle(CorrespondenceImage,Point(index,x),1,Scalar(0,0,255),-1);
 
         /* The lower the score, the lower the differences between images */
         if( score_ptr[x] < threshold )
@@ -1163,18 +1181,19 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
         addText( appended, temp, Point( 10, 20 ), font );
 
 
-        cout << score_ptr[x];
+        cout << static_cast<float>(score_ptr[x]) << " - " << threshold << endl;
         if( score_ptr[x] < threshold )
         {
-            sprintf( name, "%s/matches/I_new_%06d_old_%06d.png", ResultsPath.c_str(), x,index );
+            sprintf( name, "%s/I_new_%06d_old_%06d_%.3f.png", ResultsPath.c_str(), x, index, threshold );
             imwrite(name,appended);
         }
 
-        circle(CorrespondenceImage,Point(index,x),1,Scalar(255,0,0),-1);
         imshow( "", appended );
         imshow("matches", CorrespondenceImage);
         waitKey(500);
     }
+    sprintf( name, "%s/matches.png", ResultsPath.c_str());
+    imwrite(name,CorrespondenceImage);
 }
 
 void RunSeqSLAM(FileStorage fs)
@@ -1200,7 +1219,7 @@ void RunSeqSLAM(FileStorage fs)
 
     imwrite(CorrespondenceImageResults,CorrespondenceImage);
 
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.99);
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.85);
 }
 
 int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
@@ -1232,10 +1251,10 @@ int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
     cvtColor(CorrespondenceImage,CorrespondenceImage,CV_RGB2GRAY);
     //CorrespondenceImage = CorrespondenceImage(Rect(0,55,65, CorrespondenceImage.rows-55));
 
-    Mat matches = schvarczSlam.findMatches2(CorrespondenceImage);
+    Mat matches = schvarczSlam.findMatches3(CorrespondenceImage);
 
     cout << matches.rows << " - " << matches.cols << endl;
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 1500);
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.7);
     return 0;
 }
 
@@ -1259,6 +1278,8 @@ int RunFABMapSeqSLAM(FileStorage fs)
         cerr << "Feature Extractor error" << endl;
         return -1;
     }
+
+    int BOWType = generatorBOWType(fs["SchvarczSLAM"]["BOWType"]);
 
     //    of2c::FabMap *fabmap = generateFABMAPInstance(fs);
 
@@ -1289,13 +1310,16 @@ int RunFABMapSeqSLAM(FileStorage fs)
     vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
 
     SchvaczSLAM schvarczSlam(detector,extractor,vocab,bowIDFWeights.t());
+    schvarczSlam.setBOWType(BOWType);
     Mat matches = schvarczSlam.apply(newImages,oldImages);
     Mat CorrespondenceImage = schvarczSlam.getCorrespondenceMatrix();
 
-    imwrite(CorrespondenceImageResults,255*CorrespondenceImage);
+    double mi, ma;
+    minMaxLoc(CorrespondenceImage,&mi,&ma);
+    imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
     cout << matches.rows << " - " << matches.cols << endl;
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 1500);
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.55);
     return 0;
 }
 
@@ -1419,7 +1443,7 @@ int main(int argc, const char * argv[])
 {
 
     cout.setf(ios_base::fixed);
-    cout.precision(0);
+    cout.precision(2);
 
     //load the settings file
     string settfilename;

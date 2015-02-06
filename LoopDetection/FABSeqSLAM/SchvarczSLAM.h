@@ -22,7 +22,7 @@ using namespace cv;
 #define BOW_NORM 1
 #define BOW_FREQ 2
 #define BOW_TFIDF_FREQ 3
-#define BOW_TFIDF_NORM 3
+#define BOW_TFIDF_NORM 4
 
 class SchvaczSLAM
 {
@@ -38,11 +38,15 @@ public:
     Mat findMatches( Mat& diff_mat, int matching_dist = 10 );
     Mat findMatch2( Mat& re );
     Mat findMatches2( Mat& diff_mat );
+    Mat findMatch3( Mat& re );
+    Mat findMatches3( Mat& diff_mat );
 
     Mat generateVocabulary(vector<Mat> train_set);
 
     Mat generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE = BOW_NORM);
     Mat getCorrespondenceMatrix(){ return occurrence; }
+    void setBOWType(int BOWType){ this->BOWType = BOWType; }
+    int getBOWType(){ return BOWType; }
 
 
 private:
@@ -52,6 +56,7 @@ private:
     int RWindow;
     float minVelocity;
     float maxVelocity;
+    int BOWType;
 };
 
 #endif // SCHVACZSLAM_H

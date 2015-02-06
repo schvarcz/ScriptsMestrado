@@ -16,7 +16,7 @@ OpenSeqSLAM::OpenSeqSLAM(){
     imageSize           = Size(64, 32);
     minVelocity         = 0.8;
     maxVelocity         = 1.2;
-    RWindow             = 10;
+    RWindow             = 40;
 }
 
 void OpenSeqSLAM::init( int patch_size, int local_radius, int matching_distance ) {
@@ -228,7 +228,7 @@ pair<int, double> OpenSeqSLAM::findMatch( Mat& diff_mat, int N, int matching_dis
             ptr[x] = static_cast<int>(floor(x * v_val));
     }
     
-    
+
     int y_max = diff_mat.rows;
     
     /* Start trajectory */
@@ -252,7 +252,7 @@ pair<int, double> OpenSeqSLAM::findMatch( Mat& diff_mat, int N, int matching_dis
             
             for( int col = 0; col < idx_mat.cols; col++ ){
                 int idx = idx_mat.at<int>(row, col);
-                sum += diff_mat.at<float>( idx % y_max, idx / y_max );
+                sum += diff_mat.at<float>( idx / y_max, idx % y_max );
             }
             min_sum = MIN( min_sum, sum );
         }

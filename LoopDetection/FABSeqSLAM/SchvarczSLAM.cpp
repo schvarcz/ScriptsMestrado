@@ -5,6 +5,7 @@ SchvaczSLAM::SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor>
     extractor(extractor)
 {
     init();
+    BOWType = BOW_TFIDF_FREQ;
 }
 
 SchvaczSLAM::SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab, Mat BOWIDFWeights):
@@ -20,19 +21,19 @@ void SchvaczSLAM::init()
 {
     minVelocity         = 0.8;
     maxVelocity         = 1.2;
-    RWindow             = 10;
+    RWindow             = 20;
 }
 
 Mat SchvaczSLAM::apply(vector<Mat> QueryImages, vector<Mat> TestImages)
 {
     occurrence = calcDifferenceMatrix(QueryImages, TestImages);
-    return findMatches2(occurrence);
+    return findMatches3(occurrence);
 }
 
 Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &TestImages)
 {
-    Mat BOWQuery = generateBOWImageDescs(QueryImages,BOW_TFIDF_NORM);
-    Mat BOWTest = generateBOWImageDescs(TestImages,BOW_TFIDF_NORM);
+    Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
+    Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
 
     cout << BOWQuery.rows << " x " << BOWQuery.cols << endl;
     cout << BOWTest.rows << " x " << BOWTest.cols << endl;
@@ -40,7 +41,7 @@ Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &Tes
 
     double mi, ma;
     minMaxLoc(occurrence,&mi,&ma);
-    occurrence = (occurrence-mi)/ma;
+    occurrence = (occurrence-mi)/(ma-mi);
 
     minMaxLoc(occurrence,&mi,&ma);
     occurrence = -(occurrence - ma);
@@ -97,7 +98,7 @@ Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE)
             schvarczSLAMTrainData.push_back(bow2);
         }
 
-        cout << "\r " << kpts.size() << " keypoints detected... " << 100.0 * ((float)(it- dataset.begin()) /
+        cout << "\r " << kpts.size() << " keypoints detected... " << 100.0 * ((float)(it- dataset.begin()+1) /
                               (float)(dataset.end()-dataset.begin())) << "%             ";
         fflush(stdout);
 
@@ -283,5 +284,80 @@ Mat SchvaczSLAM::findMatches2( Mat& diff_mat )
     }
     //imshow("Matches2",diff_mat3C);
     //waitKey();
+    return matches.t();
+}
+
+Mat SchvaczSLAM::findMatch3( Mat& re )
+{
+    float retmin = numeric_limits<float>::max();
+    float retdeg = 0;
+    for(float deg = 0.0; deg<90.0; deg+=0.5)
+    {
+        float soma = 0.0;
+        for(int y=0;y<=re.rows; y++)
+        {
+            int x = y*cos(deg*M_PI/180);
+            soma += re.at<float>(Point(x,y));
+        }
+        if (soma < retmin)
+        {
+            retmin = soma;
+            retdeg = deg;
+        }
+    }
+    retmin /= re.rows;
+    float rety = re.rows/2;
+    float retx = rety*cos(retdeg*M_PI/180);
+
+    Mat ret(1,3,CV_32FC1,Scalar(255));
+    ret.at<float>(0,0) = retmin;
+    ret.at<float>(0,1) = retx;
+    ret.at<float>(0,2) = rety;
+    return ret;
+}
+
+Mat SchvaczSLAM::findMatches3( Mat& diff_mat )
+{
+    Mat diff_mat3C;
+    cvtColor(diff_mat,diff_mat3C,CV_GRAY2BGR);
+    Mat matches(diff_mat.rows,2,CV_32F,Scalar(numeric_limits<float>::max()));
+    for(int y=0; y<=diff_mat.rows-RWindow; y++)
+    {
+        float matchSum = numeric_limits<float>::max();
+        Mat match(1,2,CV_32F,Scalar(numeric_limits<float>::max()));
+        for(int x=0; x<=diff_mat.cols-RWindow; x++)
+        {
+            Rect roi(x, y, RWindow, RWindow);
+            Mat re;
+            diff_mat(roi).convertTo(re,CV_32F);
+
+            double mi, ma;
+            minMaxLoc(re,&mi,&ma);
+            re = (re-mi)/(ma-mi);
+
+            Scalar reMean = mean(re);
+
+//            Mat analyze;
+//            diff_mat3C.copyTo(analyze);
+//            rectangle(analyze,roi,Scalar(255,0,0));
+//            imshow("Analisando", re);
+//            imshow("Matches",analyze);
+//            waitKey(33);
+
+            if (reMean.val[0] > 0.70)
+            {
+                Mat matchCandidate = findMatch3(re);
+                if (matchCandidate.at<float>(0) < matchSum)
+                {
+                    matchSum = matchCandidate.at<float>(0);
+                    match.at<float>(0) = (int)(matchCandidate.at<float>(1)+x);
+                    match.at<float>(1) = matchSum; //matchCandidate.at<float>(2)+y;
+                }
+            }
+        }
+        match.copyTo(matches.row(y+RWindow/2));
+        //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
+        //circle(diff_mat3C,Point(match.at<float>(0),match.at<float>(1)),1,Scalar(255,0,0),-1);
+    }
     return matches.t();
 }
