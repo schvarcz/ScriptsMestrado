@@ -1,7 +1,8 @@
 #!/bin/sh
-export PATH=$PATH:$PWD/UtilsScripts
+CURPATH=/home/schvarcz/Dissertacao
+export PATH=$PATH:$CURPATH/src/UtilsScripts
 
-for f in $PWD/../bin/* 
+for f in $CURPATH/bin/*
 do
      export PATH=$PATH:`readlink -f $f`
 done
