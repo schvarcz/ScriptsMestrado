@@ -117,7 +117,7 @@ Mat OpenSeqSLAM::preprocess( Mat& image ) {
     
     if ( result.channels() > 1 )
         cvtColor( result, result, CV_BGR2GRAY );
-    
+
     if( result.cols != imageSize.width && result.rows != imageSize.height )
         resize( result, result, imageSize, INTER_LANCZOS4 );
 
@@ -150,8 +150,8 @@ Mat OpenSeqSLAM::calcDifferenceMatrix( vector<Mat>& set_1, vector<Mat>& set_2 ) 
         /* Difference is between two images is calculated as */
         /* the average sum of absolute difference between them */
         for( int j = 0; j < m; j++ )
-          diff_ptr[j] = sum( abs(set_2[j] - set_1[i]) )[0] / n;
-        //diff_ptr[j] = sum( abs(set_2[j] - set_1[i]) )[0] / (set_1[i].rows*set_1[i].cols);
+          //diff_ptr[j] = sum( abs(set_2[j] - set_1[i]) )[0] / n;
+          diff_ptr[j] = sum( abs(set_2[j] - set_1[i]) )[0] / (set_1[i].rows*set_1[i].cols);
     }
     
     return diff_mat;
@@ -229,22 +229,22 @@ pair<int, double> OpenSeqSLAM::findMatch( Mat& diff_mat, int N, int matching_dis
     }
     
 
-    int y_max = diff_mat.rows;
+    int x_max = diff_mat.cols;
     
     /* Start trajectory */
     int n_start = N - (matching_dist / 2);
-    Mat x( velocity.rows, matching_dist + 1, CV_32SC1 );
-    for( int i = 0; i < x.cols; i++ )
-        x.col(i) = (n_start + i - 1) * y_max;
+    Mat y( velocity.rows, matching_dist + 1, CV_32SC1 );
+    for( int i = 0; i < y.cols; i++ )
+        y.col(i) = (n_start + i - 1) * x_max;
     
     
-    vector<float> score(diff_mat.rows - matching_dist);
+    vector<float> score(diff_mat.cols - matching_dist);
     
     /* Perform the trajectory search to collect the scores */
-    for( int s = 0; s < diff_mat.rows - matching_dist; s++ ) {
-        Mat y = increment_indices + s;
-        Mat( y.size(), y.type(), Scalar(y_max) ).copyTo( y, y > y_max );
-        Mat idx_mat = x + y;
+    for( int s = 0; s < diff_mat.cols - matching_dist; s++ ) {
+        Mat x = increment_indices + s;
+        Mat( x.size(), x.type(), Scalar(x_max) ).copyTo( x, x > x_max );
+        Mat idx_mat = y + x;
         
         float min_sum = std::numeric_limits<float>::max();
         for( int row = 0; row < idx_mat.rows; row++ ) {
@@ -252,7 +252,7 @@ pair<int, double> OpenSeqSLAM::findMatch( Mat& diff_mat, int N, int matching_dis
             
             for( int col = 0; col < idx_mat.cols; col++ ){
                 int idx = idx_mat.at<int>(row, col);
-                sum += diff_mat.at<float>( idx / y_max, idx % y_max );
+                sum += diff_mat.at<float>( idx / x_max, idx % x_max );
             }
             min_sum = MIN( min_sum, sum );
         }
@@ -286,11 +286,11 @@ Mat OpenSeqSLAM::findMatches( Mat& diff_mat, int matching_dist ) {
     /* Match matrix consists of 2 rows, first row is the index of matched image, 
      second is the score. Since the higher score the larger the difference (the weaker the match) 
      we initialize them with maximum value */
-    Mat matches( 2, diff_mat.cols, CV_32FC1, Scalar( std::numeric_limits<float>::max() ) );
+    Mat matches( 2, diff_mat.rows, CV_32FC1, Scalar( std::numeric_limits<float>::max() ) );
     
     float * index_ptr = matches.ptr<float>(0);
     float * score_ptr = matches.ptr<float>(1);
-    for( int N = half_m_dist + 1; N < (diff_mat.cols - half_m_dist); N++ ) {
+    for( int N = half_m_dist + 1; N < (matches.cols - half_m_dist); N++ ) {
         pair<int, double> match = findMatch( diff_mat, N, m_dist );
         
         index_ptr[N] = match.first;
@@ -310,13 +310,16 @@ Mat OpenSeqSLAM::findMatches( Mat& diff_mat, int matching_dist ) {
  * and the second row is the score (lower is better)
  */
 Mat OpenSeqSLAM::apply( vector<Mat>& set_1, vector<Mat>& set_2 ) {
+    cout << "Calculate Difference Matrix" << endl;
     Mat diff_mat = calcDifferenceMatrix( set_1, set_2 );
     
     /* Includes additional row on diff matrix with infinite values, to penalize out of bounds cases */
     Mat inf( 1, diff_mat.cols, diff_mat.type(), Scalar(std::numeric_limits<float>::max()) );
     vconcat( diff_mat, inf, diff_mat );
-    
+
+    cout << "Enhance local Contrast" << endl;
     enhanced = enhanceLocalContrast( diff_mat );
 
+    cout << "Find Matches" << endl;
     return findMatches( enhanced );
 }

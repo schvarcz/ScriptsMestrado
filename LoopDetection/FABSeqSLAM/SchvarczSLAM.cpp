@@ -36,8 +36,6 @@ Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &Tes
     Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
     Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
 
-    cout << BOWQuery.rows << " x " << BOWQuery.cols << endl;
-    cout << BOWTest.rows << " x " << BOWTest.cols << endl;
     Mat occurrence  = BOWQuery * BOWTest.t();
 
     double mi, ma;
