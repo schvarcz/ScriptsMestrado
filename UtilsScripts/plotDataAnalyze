@@ -1,0 +1,12 @@
+#!/usr/bin/python
+from numpy import *
+from matplotlib import pyplot as plt
+data = file("data","r").readlines()
+threshold = float(data[0].split(",")[2])
+data = asarray([float(d.split(",")[1]) for d in data])
+
+plt.plot(data)
+plt.plot(where(data<threshold)[0],data[data<threshold],"ro")
+
+plt.ylim(0,1.2)
+plt.show()

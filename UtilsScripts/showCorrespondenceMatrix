@@ -22,9 +22,13 @@ if len(sys.argv) < 2:
 imageFile = os.path.expanduser(sys.argv[1])
 
 img = imread(imageFile)
+ma, mi = 1.0, 0.0
+imgMax, imgMin = img.max(), img.min()
+img = (ma-mi)*(img - imgMin)/(imgMax - imgMin) + mi
 plt.imshow(img)
 plt.colorbar()
 plt.xlabel("Test")
 plt.ylabel("Query")
+plt.title("SchvarczSLAM - Normalized")
 plt.show()
 
