@@ -1136,12 +1136,19 @@ vector<Mat> loadDatasetFromVideo( string path ) {
 
 void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold = 0.99)
 {
-    cvtColor(CorrespondenceImage,CorrespondenceImage,CV_GRAY2RGB);
+    double ma,mi;
+
+    minMaxLoc(CorrespondenceImage,&mi,&ma);
+    CorrespondenceImage = 255*(CorrespondenceImage-mi)/(ma-mi);
+    Mat corres;
+    CorrespondenceImage.convertTo(corres,CV_8U);
+    cvtColor(corres,CorrespondenceImage,CV_GRAY2RGB);
+
     CvFont font = cvFontQt("Helvetica", 20.0, CV_RGB(255, 0, 0) );
     namedWindow("");
     moveWindow("", 0, 0);
 
-    char temp[100], name[100];
+    char temp[100], name[255];
 
     float * index_ptr = matches.ptr<float>(0);
     float * score_ptr = matches.ptr<float>(1);
@@ -1151,7 +1158,6 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
     for( uint x = 0; x < newImages.size(); x++ ) {
 
         cout << "\r Image " << x << "/" << newImages.size() << " (" << 100.0*float(x)/newImages.size()<< "%)      ";
-        fflush(stdout);
 
         int index = static_cast<int>(index_ptr[x]);
 
@@ -1184,13 +1190,14 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
         cout << static_cast<float>(score_ptr[x]) << " - " << threshold << endl;
         if( score_ptr[x] < threshold )
         {
-            sprintf( name, "%s/I_new_%06d_old_%06d_%.3f.png", ResultsPath.c_str(), x, index, threshold );
+            sprintf( name, "%s/I_new_%06d_old_%06d_%.3f.png", ResultsPath.c_str(), x, index, score_ptr[x] );
             imwrite(name,appended);
         }
 
         imshow( "", appended );
         imshow("matches", CorrespondenceImage);
         waitKey(500);
+        fflush(stdout);
     }
     sprintf( name, "%s/matches.png", ResultsPath.c_str());
     imwrite(name,CorrespondenceImage);
@@ -1203,6 +1210,8 @@ void RunSeqSLAM(FileStorage fs)
             QueryPath = fs["FilePaths"]["QueryPath"],
             ResultsPath = fs["SeqSLAM"]["ResultsPath"],
             CorrespondenceImageResults = fs["FilePaths"]["CorrespondenceImageResults"];
+
+    float threshold = fs["SeqSLAM"]["Threshold"];
 
     vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
     vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
@@ -1217,9 +1226,12 @@ void RunSeqSLAM(FileStorage fs)
     Mat matches = seq_slam.apply( preprocessed_new, preprocessed_old );
     Mat CorrespondenceImage = seq_slam.getCorrespondenceMatrix();
 
-    imwrite(CorrespondenceImageResults,CorrespondenceImage);
+    double mi, ma;
+    minMaxLoc(CorrespondenceImage,&mi,&ma);
+    imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, 0.85);
+    cout << "Show results" << endl;
+    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
 }
 
 int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
@@ -1322,7 +1334,6 @@ int RunFABMapSeqSLAM(FileStorage fs)
     minMaxLoc(CorrespondenceImage,&mi,&ma);
     imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
-    cout << matches.rows << " - " << matches.cols << endl;
     showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
     return 0;
 }

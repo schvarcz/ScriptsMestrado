@@ -16,7 +16,7 @@ OpenSeqSLAM::OpenSeqSLAM(){
     imageSize           = Size(64, 32);
     minVelocity         = 0.8;
     maxVelocity         = 1.2;
-    RWindow             = 40;
+    RWindow             = 20;
 }
 
 void OpenSeqSLAM::init( int patch_size, int local_radius, int matching_distance ) {
