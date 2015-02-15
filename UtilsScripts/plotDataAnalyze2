@@ -1,0 +1,71 @@
+#!/usr/bin/python
+from numpy import *
+from os import listdir
+from matplotlib import pyplot as plt
+
+data = file("data","r").readlines()
+threshold = float(data[0].split(",")[2])
+data = asarray([float(d.split(",")[1]) for d in data])
+
+matches = []
+for f in listdir("."):
+    if f[:5] == "I_new":
+        matches.append([int(f[17:23]), int(f[6:12])])
+matches = sorted(matches,key=lambda x:x[0])
+
+groundTruth = file("../groundTruth.txt","r").readlines()
+groundTruth = asarray([ [int(m) for m in g.split(" - ")] for g in groundTruth])
+
+distances = []
+outliers = zeros(len(matches))
+outliers2 = []
+idx = 0
+for m in matches:
+    truth = None
+    for g in groundTruth:
+        if(m[0] == g[0]):
+            truth = g[1]
+            break
+    if truth != None:
+        distances.append(abs(truth - m[1]))
+    else:
+        outliers[idx] = 1
+        outliers2.append(m)
+    idx += 1
+
+distances = asarray(distances).astype("float32")
+
+#Threshold e limite de aceites
+plt.plot(data,"r+")
+plt.plot(where(data<threshold)[0],data[data<threshold],"bo")
+plt.plot(ones(len(data))*threshold,"g")
+plt.ylim(0,1.2)
+plt.title("Threshold")
+plt.xlabel("Frame")
+plt.ylabel("Matching")
+
+#Recall
+f = plt.figure()
+plt.plot(1-distances/40)
+plt.ylim(0,1)
+plt.title("Recall")
+plt.xlabel("Frame")
+plt.ylabel("Precision")
+
+#Outliers
+f = plt.figure()
+plt.plot(outliers)
+plt.title("Outliers")
+plt.xlabel("Frame")
+
+#Matchings
+f = plt.figure()
+x, y = zip(*matches)
+plt.plot(x,y)
+if outliers2 != []:
+    x, y = zip(*outliers2)
+    plt.plot(x,y,"ro")
+plt.title("Matches")
+plt.xlabel("Frames 2nd")
+plt.xlabel("Frames 1st")
+plt.show()
