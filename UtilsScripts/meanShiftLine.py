@@ -125,7 +125,7 @@ def relaxLineMeanShift3(img,line):
             show(rectVB,line,weights, histTitle = "Node {0}".format(idx))
             desv = newMeanshift-x
 
-            if abs(desv)<1 and abs(desv) > 0.1:
+            if 0.1 < abs(desv) < 1:
                 if desv < 0:
                     desv = -1
                 if desv > 0:
