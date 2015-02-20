@@ -1276,7 +1276,7 @@ int RunFABMapSeqSLAM(FileStorage fs)
 {
     string TestPath = fs["FilePaths"]["TestPath"],
             QueryPath = fs["FilePaths"]["QueryPath"],
-            ResultsPath = fs["SeqSLAM"]["ResultsPath"],
+            ResultsPath = fs["SchvarczSLAM"]["ResultsPath"],
             CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"],
             vocabPath = fs["FilePaths"]["Vocabulary"],
             bowIDFWeightsPath = fs["FilePaths"]["IDFWeights"];
