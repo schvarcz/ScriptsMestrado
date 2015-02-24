@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from matplotlib import pyplot as plt
 from numpy import *
 import cv2
@@ -111,18 +112,22 @@ def relaxLineMeanShift3(img,line):
         x,y = pt
         oldX = None
         while True:
-            windowSizeX = min(x-max(x-maxWindowSize,0), min(x+maxWindowSize,maxX-1)-x)
-            windowSizeY = min(y-max(y-maxWindowSize,0), min(y+maxWindowSize,maxY-1)-y)
+            windowSizeX = min(maxWindowSize-max(maxWindowSize - x - 1,0), min(x+maxWindowSize,maxX-1)-x)
+            windowSizeY = min(maxWindowSize-max(maxWindowSize - y - 1,0), min(y+maxWindowSize,maxY-1)-y)
 
-            windowX = slice(x-windowSizeX,x+windowSizeX+1)
-            windowY = slice(y-windowSizeY,y+windowSizeY+1)
+            windowX = slice(x-windowSizeX+1,x+windowSizeX)
+            #print windowX.start, " - ", windowX.stop
+            windowY = slice(y-windowSizeY+1,y+windowSizeY)
+            #print windowY.start, " - ", windowY.stop
 
             weights = asarray([img[windowY, nX].sum() for nX in range(int(windowX.start), int(windowX.stop))])
+            #print weights
 
             newMeanshift = (  arange(windowX.start,windowX.stop) * weights  ).sum()/weights.sum()
 
-            print y, x, windowX.start, windowX.stop, newMeanshift-windowX.start
-            show(rectVB,line,weights, histTitle = "Node {0}".format(idx))
+            #print x, y, windowX.start, windowX.stop, newMeanshift-windowX.start
+            #show(rectVB,line,weights, histTitle = "Node {0}".format(idx))
+            #print newMeanshift
             desv = newMeanshift-x
 
             if 0.1 < abs(desv) < 1:
@@ -143,9 +148,9 @@ def relaxLineMeanShift3(img,line):
             oldX, x, oldDesv = x, newX, desv
             moveLine(line, idx, desv)
             
-        for i in range(10):
-            show(rectVB,line,weights, histTitle = "Node {0}".format(idx))
-    show(rectVB,line)
+#        for i in range(10):
+#            show(rectVB,line,weights, histTitle = "Node {0}".format(idx))
+#    show(rectVB,line)
 
 
 def moveLine(line, idx, desv):
@@ -221,7 +226,7 @@ class LSE(object):
         b = matrix(y).T
         try:
             params = solve(A.T*A,A.T*b).A1
-            print "A = {0} B = {1} C = {2} D = {3}".format(params[0], params[1], params[2], params[3])
+            #print "A = {0} B = {1} C = {2} D = {3}".format(params[0], params[1], params[2], params[3])
             return params
         except:
             return None
@@ -238,7 +243,7 @@ class LSE(object):
                 inliers.append(pts[idx])
             else:
                 outliers.append(pts[idx])
-        print "erros: ", erros
+        #print "erros: ", erros
         return inliers, outliers
     
     
@@ -250,7 +255,9 @@ class LSE(object):
 
 
 
-rectV = cv2.cvtColor(imgGlobal[195-maxWindowSize:195+30+maxWindowSize,65-maxWindowSize:65+30+maxWindowSize],cv2.cv.CV_RGB2GRAY).astype(float32)
+rectV = cv2.cvtColor(imgGlobal[145-maxWindowSize:145+30+maxWindowSize,15-maxWindowSize:15+30+maxWindowSize],cv2.cv.CV_RGB2GRAY).astype(float32)
+#plt.imshow(rectV)
+#plt.show()
 ma, mi = rectV.max(), rectV.min()
 rectV = (rectV-mi)/(ma-mi)
 rectVB = rectV #cv2.blur(cv2.dilate(cv2.blur(rectV,(3,3)),ones([3,3])),(3,3))
@@ -258,15 +265,16 @@ rectVB = rectV #cv2.blur(cv2.dilate(cv2.blur(rectV,(3,3)),ones([3,3])),(3,3))
 maxY, maxX = rectVB.shape
 rectVB = -rectVB+1.
 
-plt.imshow(rectVB)
-plt.colorbar()
-plt.show()
+#plt.imshow(rectVB)
+#plt.colorbar()
+#plt.show()
 
 line = zip(*[arange(0+maxWindowSize,29+maxWindowSize),arange(0+maxWindowSize,29+maxWindowSize)])
 
 plt.ion()
 
 relaxLineMeanShift3(rectVB,line)
+print line
 
 model = LSE()
 params, inliers, outliers = ransac(line, model)
