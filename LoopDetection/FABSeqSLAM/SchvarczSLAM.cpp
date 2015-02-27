@@ -1,5 +1,11 @@
 #include "SchvarczSLAM.h"
 
+SchvaczSLAM::SchvaczSLAM()
+{
+    init();
+    BOWType = BOW_TFIDF_FREQ;
+}
+
 SchvaczSLAM::SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor):
     detector(detector),
     extractor(extractor)
@@ -23,12 +29,13 @@ void SchvaczSLAM::init()
     maxVelocity         = 1.2;
     RWindow             = 20;
     maxVar              = 0.7;
+    maxHalfWindowMeanShiftSize = 10;
 }
 
 Mat SchvaczSLAM::apply(vector<Mat> QueryImages, vector<Mat> TestImages)
 {
     occurrence = calcDifferenceMatrix(QueryImages, TestImages);
-    return findMatches3(occurrence);
+    return findMatches4(occurrence);
 }
 
 Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &TestImages)
@@ -354,6 +361,183 @@ Mat SchvaczSLAM::findMatches3( Mat& diff_mat )
                 }
             }
         }
+        match.copyTo(matches.row(y+RWindow/2));
+        //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
+        //circle(diff_mat3C,Point(match.at<float>(0),match.at<float>(1)),1,Scalar(255,0,0),-1);
+    }
+    return matches.t();
+}
+
+void SchvaczSLAM::moveLine(Vector< Point > &line,int idx, int desv, int max)
+{
+    for(int i=idx; i < line.size();i++)
+    {
+        line[i].x = MIN(round(line[i].x+desv), max);
+    }
+}
+
+Mat SchvaczSLAM::vectorToMat(Vector < Point > pts)
+{
+    Mat ret(pts.size(), 2, CV_32F, 0.0);
+
+    for (int i=0; i < pts.size(); i++)
+    {
+        ret.at<float>(i,0) = pts[i].x;
+        ret.at<float>(i,1) = pts[i].y;
+    }
+
+    return ret;
+}
+
+Vector < Point > SchvaczSLAM::matToVector(Mat pts)
+{
+    Vector < Point > ret;
+
+    for (int i=0; i <pts.rows; i++)
+        ret.push_back(Point(pts.at<float>(i,0), pts.at<float>(i,1)));
+
+    return ret;
+}
+
+float SchvaczSLAM::lineRank(Mat img, Mat pts)
+{
+    float mean = 0;
+    for(int i=0; i<pts.rows; i++)
+        mean += img.at<float>(pts.at<float>(i,1),pts.at<float>(i,0));
+    mean /= pts.rows;
+
+    return mean;
+}
+
+void SchvaczSLAM::findMatch4( Mat& roi , Vector< Point > &line)
+{
+    int xMax = roi.cols - 1;
+    int yMax = roi.rows - 1;
+    for(int idx =0; idx< line.size(); idx++)
+    {
+        Point pt = line[idx];
+        Point oldPt = pt;
+        float oldDesv = 0;
+        while(true)
+        {
+            float windowSizeX = MIN(maxHalfWindowMeanShiftSize - MAX(maxHalfWindowMeanShiftSize - pt.x,0),
+                                    maxHalfWindowMeanShiftSize - MAX(maxHalfWindowMeanShiftSize + pt.x - xMax,0));
+            float windowSizeY = MIN(maxHalfWindowMeanShiftSize - MAX(maxHalfWindowMeanShiftSize - pt.y,0),
+                                    maxHalfWindowMeanShiftSize - MAX(maxHalfWindowMeanShiftSize + pt.y - yMax,0));
+
+            Rect window(pt.x-windowSizeX,pt.y-windowSizeY,
+                        2*windowSizeX+1, 2*windowSizeY+1);
+
+            Mat meanShiftWindow = roi(window);
+
+            Mat histo(meanShiftWindow.cols, 1, CV_32F, Scalar(0));
+            Mat range(1, meanShiftWindow.cols, CV_32F, Scalar(0));
+            for(int xx = 0; xx<meanShiftWindow.cols; xx++)
+            {
+                histo.at<float>(xx) = sum(meanShiftWindow.col(xx))(0);
+                range.at<float>(0,xx) = xx + window.x;
+            }
+
+            Mat aux = (range*histo);
+            float newMeanshiftCenter = (aux.at<float>(0)/sum(histo)(0));
+
+            float desv = newMeanshiftCenter - pt.x;
+
+            float newX = round(desv+pt.x);
+            if (newX == oldPt.x)
+            {
+                if (fabs(oldDesv) > fabs(desv))
+                {
+                    pt.x = newX;
+                    moveLine(line, idx, desv, xMax);
+                }
+                break;
+            }
+            else if (newX == pt.x)
+                break;
+
+            oldPt = pt;
+            pt.x = newX;
+            oldDesv = desv;
+            moveLine(line, idx, desv, xMax);
+            //line[idx] = pt;
+        }
+    }
+}
+
+
+void SchvaczSLAM::draw(Mat img, Vector< Point > pts)
+{
+    Mat drawImg; img.copyTo(drawImg);
+    cvtColor(drawImg, drawImg, CV_GRAY2RGB);
+    for (int i=0; i<pts.size(); i++)
+        circle(drawImg,pts[i],1,Scalar(255,0,0),-1);
+    imshow("Line", drawImg);
+    waitKey(500);
+}
+
+Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
+{
+    Mat diff_mat3C;
+    cvtColor(diff_mat,diff_mat3C,CV_GRAY2BGR);
+
+    Mat matches(diff_mat.rows,2,CV_32F,Scalar(numeric_limits<float>::max()));
+    for(int y=0; y<diff_mat.rows-RWindow - 2*maxHalfWindowMeanShiftSize; y++)
+    {
+        float matchSum = numeric_limits<float>::max();
+        float bestRawMatch = numeric_limits<float>::max(), bestLSEMatch = numeric_limits<float>::max();
+        Mat match(1,2,CV_32F,Scalar(numeric_limits<float>::max()));
+        for(int x=0; x<diff_mat.cols-RWindow - 2*maxHalfWindowMeanShiftSize; x++)
+        {
+            Rect roi(x, y,
+                     RWindow + 2*maxHalfWindowMeanShiftSize, RWindow + 2*maxHalfWindowMeanShiftSize);
+            Mat imgRect;
+            diff_mat(roi).convertTo(imgRect,CV_32F);
+
+            double mi, ma;
+            minMaxLoc(imgRect,&mi,&ma);
+            imgRect = (imgRect-mi)/(ma-mi);
+
+            Scalar reMean = mean(imgRect);
+
+            imgRect = -imgRect + 1;
+
+            if (reMean.val[0] > maxVar)
+            {
+                Vector < Point > line ;
+                for(int i=0;i<RWindow;i++)
+                {
+                    line.push_back(Point(i+maxHalfWindowMeanShiftSize,
+                                         i+maxHalfWindowMeanShiftSize));
+                }
+                findMatch4(imgRect, line);
+
+                Mat pts = vectorToMat(line);
+                float rawMatch = 1 - lineRank(imgRect,pts);
+
+                LSE lse;
+                Mat params = lse.model(pts);
+                float lseMatch = 1 - lineRank(imgRect,lse.compute(pts,params));
+
+                Ransac ransac(lse);
+                pts = ransac.compute(pts);
+                line = matToVector(pts);
+                float currentMatchSum = 1 - lineRank(imgRect,pts);
+
+                if (currentMatchSum < matchSum)
+                {
+                    //draw(imgRect,line);
+                    matchSum = currentMatchSum;
+                    bestRawMatch = rawMatch;
+                    bestLSEMatch = lseMatch;
+                    //Scalar me = mean(pts.col(0));
+                    //match.at<float>(0) = (int)(me.val[0]-maxHalfWindowMeanShiftSize+x);
+                    match.at<float>(0) = (int)(pts.at<float>(pts.rows/2,0)+x-maxHalfWindowMeanShiftSize);
+                    match.at<float>(1) = matchSum;
+                }
+            }
+        }
+        cout << "LineRank: " << bestRawMatch << " - " << bestLSEMatch << " - " << matchSum << endl;
         match.copyTo(matches.row(y+RWindow/2));
         //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
         //circle(diff_mat3C,Point(match.at<float>(0),match.at<float>(1)),1,Scalar(255,0,0),-1);

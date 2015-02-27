@@ -40,12 +40,12 @@ public:
     
     Mat apply( vector<Mat>& set_1, vector<Mat>& set_2 );
     Mat getCorrespondenceMatrix(){ return enhanced; }
-    
+
+    int RWindow;
 protected:
     int patchSize;
     int localRadius;
     int matchingDistance;
-    int RWindow;
     float minVelocity;
     float maxVelocity;
     Size imageSize;
