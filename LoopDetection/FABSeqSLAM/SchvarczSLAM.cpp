@@ -38,6 +38,12 @@ Mat SchvaczSLAM::apply(vector<Mat> QueryImages, vector<Mat> TestImages)
     return findMatches4(occurrence);
 }
 
+Mat SchvaczSLAM::apply(VideoCapture QueryImages, VideoCapture TestImages)
+{
+    occurrence = calcDifferenceMatrix(QueryImages, TestImages);
+    return findMatches4(occurrence);
+}
+
 Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &TestImages)
 {
     Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
@@ -54,6 +60,56 @@ Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &Tes
     return occurrence;
 }
 
+Mat SchvaczSLAM::calcDifferenceMatrix(VideoCapture &QueryImages, VideoCapture &TestImages)
+{
+    Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
+    Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
+
+    Mat occurrence  = BOWQuery * BOWTest.t();
+
+    double mi, ma;
+    minMaxLoc(occurrence,&mi,&ma);
+    occurrence = (occurrence-mi)/(ma-mi);
+
+    minMaxLoc(occurrence,&mi,&ma);
+    occurrence = -(occurrence - ma);
+    return occurrence;
+}
+
+
+Mat SchvaczSLAM::generateBOWImageDescs(VideoCapture movie, int BOW_TYPE)
+{
+    //extract image descriptors
+    Mat schvarczSLAMTrainData;
+
+    if (!movie.isOpened()) {
+        cerr << "GenerateBOWImageDescs: movie not found" << endl;
+        return schvarczSLAMTrainData;
+    }
+
+    //use a FLANN matcher to generate bag-of-words representations
+    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("FlannBased");
+    BOWImgDescriptorExtractor bide(extractor, matcher);
+    bide.setVocabulary(vocab);
+
+
+    cout << "SchvarczSLAM: Extracting Bag-of-words Image Descriptors" << endl;
+
+    Mat frame;
+    while (movie.read(frame)) {
+
+        cout << "\r " << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
+                                movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%         ";
+
+        generateBOWImageDescs(frame, schvarczSLAMTrainData, bide, BOW_TYPE);
+
+        fflush(stdout);
+    }
+    cout << "Done" << endl;
+
+    return schvarczSLAMTrainData;
+}
+
 Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE)
 {
     //use a FLANN matcher to generate bag-of-words representations
@@ -61,55 +117,68 @@ Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE)
     BOWImgDescriptorExtractor bide(extractor, matcher);
     bide.setVocabulary(vocab);
 
-
     //extract image descriptors
     Mat schvarczSLAMTrainData;
     cout << "SchvarczSLAM: Extracting Bag-of-words Image Descriptors" << endl;
 
-    Mat bow;
-    vector<KeyPoint> kpts;
-
     for(vector<Mat>::iterator it = dataset.begin(); it != dataset.end(); it++)
     {
-        vector< vector< int > > pointIdxsOfClusters;
-        detector->detect(*it, kpts);
-        bide.compute(*it, kpts, bow, &pointIdxsOfClusters);
+        cout << "\r " << 100.0 * ((float)(it- dataset.begin()+1) /
+                              (float)(dataset.end()-dataset.begin())) << "%   ";
 
-        if (BOW_TYPE == BOW_NORM)
-        {
-            schvarczSLAMTrainData.push_back(bow);
-        }
-        else if (BOW_TYPE == BOW_FREQ)
-        {
-            Mat bow2(1,pointIdxsOfClusters.size(),CV_32F,Scalar(0));
-            for (int i =0; i < pointIdxsOfClusters.size();i++)
-            {
-                bow2.at<float>(0,i) = (float)pointIdxsOfClusters[i].size();
-            }
-            schvarczSLAMTrainData.push_back(bow2);
-        }
-        else if (BOW_TYPE == BOW_TFIDF_NORM)
-        {
-            multiply(bow,BOWIDFWeights,bow);
-            schvarczSLAMTrainData.push_back(bow);
-        }
-        else if (BOW_TYPE == BOW_TFIDF_FREQ)
-        {
-            Mat bow2(1,pointIdxsOfClusters.size(),CV_32F,Scalar(0));
-            for (int i =0; i < pointIdxsOfClusters.size();i++)
-            {
-                bow2.at<float>(0,i) = (float)pointIdxsOfClusters[i].size();
-            }
-            multiply(bow2,BOWIDFWeights,bow2);
-            schvarczSLAMTrainData.push_back(bow2);
-        }
+        generateBOWImageDescs(*it, schvarczSLAMTrainData, bide, BOW_TYPE);
 
-        cout << "\r " << kpts.size() << " keypoints detected... " << 100.0 * ((float)(it- dataset.begin()+1) /
-                              (float)(dataset.end()-dataset.begin())) << "%             ";
         fflush(stdout);
-
     }
     cout << "Done                                       " << endl;
+
+    return schvarczSLAMTrainData;
+}
+
+Mat SchvaczSLAM::generateBOWImageDescs(Mat frame, Mat &schvarczSLAMTrainData, BOWImgDescriptorExtractor bide, int BOW_TYPE)
+{
+    vector< vector< int > > pointIdxsOfClusters;
+    vector<KeyPoint> kpts;
+    Mat bow;
+
+    detector->detect(frame, kpts);
+    bide.compute(frame, kpts, bow, &pointIdxsOfClusters);
+    if (bow.cols == 0)
+    {
+        bow = Mat::zeros(1, BOWIDFWeights.cols, CV_32F);
+    }
+
+    if (BOW_TYPE == BOW_NORM)
+    {
+        schvarczSLAMTrainData.push_back(bow);
+    }
+    else if (BOW_TYPE == BOW_FREQ)
+    {
+        Mat bow2(1,pointIdxsOfClusters.size(),CV_32F,Scalar(0));
+        for (int i =0; i < pointIdxsOfClusters.size();i++)
+        {
+            bow2.at<float>(0,i) = (float)pointIdxsOfClusters[i].size();
+        }
+        schvarczSLAMTrainData.push_back(bow2);
+    }
+    else if (BOW_TYPE == BOW_TFIDF_NORM)
+    {
+        multiply(bow,BOWIDFWeights,bow);
+        schvarczSLAMTrainData.push_back(bow);
+    }
+    else if (BOW_TYPE == BOW_TFIDF_FREQ)
+    {
+        Mat bow2(1,pointIdxsOfClusters.size(),CV_32F,Scalar(0));
+        for (int i =0; i < pointIdxsOfClusters.size();i++)
+        {
+            bow2.at<float>(0,i) = (float)pointIdxsOfClusters[i].size();
+        }
+        multiply(bow2,BOWIDFWeights,bow2);
+        schvarczSLAMTrainData.push_back(bow2);
+    }
+
+    cout <<  kpts.size() << " keypoints detected... " << "     ";
+
 
     return schvarczSLAMTrainData;
 }
@@ -427,6 +496,7 @@ void SchvaczSLAM::findMatch4( Mat& roi , Vector< Point > &line)
 
             Rect window(pt.x-windowSizeX,pt.y-windowSizeY,
                         2*windowSizeX+1, 2*windowSizeY+1);
+            cout << "Window: " << window.x << "x" << window.y << " - " << window.width << "x" << window.height << endl;
 
             Mat meanShiftWindow = roi(window);
 
@@ -482,15 +552,18 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
     cvtColor(diff_mat,diff_mat3C,CV_GRAY2BGR);
 
     Mat matches(diff_mat.rows,2,CV_32F,Scalar(numeric_limits<float>::max()));
-    for(int y=0; y<diff_mat.rows-RWindow - 2*maxHalfWindowMeanShiftSize; y++)
+    for(int y=0; y < diff_mat.rows-RWindow - 2*maxHalfWindowMeanShiftSize; y++)
     {
+        cout << "Nova linha: " << y << endl;
         float matchSum = numeric_limits<float>::max();
         float bestRawMatch = numeric_limits<float>::max(), bestLSEMatch = numeric_limits<float>::max();
         Mat match(1,2,CV_32F,Scalar(numeric_limits<float>::max()));
-        for(int x=0; x<diff_mat.cols-RWindow - 2*maxHalfWindowMeanShiftSize; x++)
+        for(int x=0; x < diff_mat.cols-RWindow - 2*maxHalfWindowMeanShiftSize; x++)
         {
+            cout << "  Nova coluna: " << x << "x" << y << endl;
             Rect roi(x, y,
                      RWindow + 2*maxHalfWindowMeanShiftSize, RWindow + 2*maxHalfWindowMeanShiftSize);
+            cout << "    roi: " << roi.x << "x" << roi.y << " - " << roi.width << "x" << roi.height << endl;
             Mat imgRect;
             diff_mat(roi).convertTo(imgRect,CV_32F);
 
@@ -501,9 +574,10 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
             Scalar reMean = mean(imgRect);
 
             imgRect = -imgRect + 1;
-
+            cout << reMean.val[0] << endl;
             if (reMean.val[0] > maxVar)
             {
+                cout << "  Passou MAXVar " << x << "x" << y << endl;
                 Vector < Point > line ;
                 for(int i=0;i<RWindow;i++)
                 {
@@ -532,13 +606,14 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
                     bestLSEMatch = lseMatch;
                     //Scalar me = mean(pts.col(0));
                     //match.at<float>(0) = (int)(me.val[0]-maxHalfWindowMeanShiftSize+x);
-                    match.at<float>(0) = (int)(pts.at<float>(pts.rows/2,0)+x-maxHalfWindowMeanShiftSize);
+                    cout << pts.at<float>(pts.rows/2,0) << endl;
+                    match.at<float>(0) = (int)(pts.at<float>(pts.rows/2,0)+x);
                     match.at<float>(1) = matchSum;
                 }
             }
         }
         cout << "LineRank: " << bestRawMatch << " - " << bestLSEMatch << " - " << matchSum << endl;
-        match.copyTo(matches.row(y+RWindow/2));
+        match.copyTo(matches.row(y+RWindow/2+maxHalfWindowMeanShiftSize));
         //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
         //circle(diff_mat3C,Point(match.at<float>(0),match.at<float>(1)),1,Scalar(255,0,0),-1);
     }

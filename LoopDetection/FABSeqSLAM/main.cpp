@@ -57,6 +57,7 @@ int openFABMAP(string testPath,
                string resultsPath,
                bool addNewOnly);
 
+void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold = 0.99);
 /*
 helper functions
 */
@@ -617,7 +618,7 @@ int openFABMAP(string testPath,
 /*
 Run FabMap on a test dataset
 */
-Mat openFABMAP(Mat queryImageDescs,
+vector<of2c::IMatch> openFABMAP(Mat queryImageDescs,
                Mat testImageDescs,
                of2c::FabMap *fabmap)
 {
@@ -625,19 +626,11 @@ Mat openFABMAP(Mat queryImageDescs,
     //running openFABMAP
     cout << "Running openFABMAP" << endl;
     vector<of2c::IMatch> matches;
-    vector<of2c::IMatch>::iterator l;
-
-    Mat confusion_mat(queryImageDescs.rows, testImageDescs.rows, CV_64FC1);
-    confusion_mat = Scalar(0); // init to 0's
 
     //automatically comparing a whole dataset
     fabmap->compare(queryImageDescs, testImageDescs, matches);
-    cout.precision(3);
-    for(l = matches.begin(); l != matches.end(); l++) {
-        confusion_mat.at<double>(l->queryIdx, l->imgIdx) = l->match;
-    }
-    cout.precision(0);
-    return confusion_mat;
+
+    return matches;
 }
 
 
@@ -646,6 +639,7 @@ int openFABMAP(string TestPath,
                of2c::FabMap *fabmap,
                string vocabPath,
                string CorrespondenceImageResults,
+               string ResultsPath,
                Ptr<FeatureDetector> detector,
                Ptr<DescriptorExtractor> extractor)
 {
@@ -662,21 +656,41 @@ int openFABMAP(string TestPath,
     }
     fs.release();
 
+    const clock_t begin_time = clock();
     cout << "Generating BOW for test images: " << TestPath << endl;
     Mat BOWTest = generateBOWImageDescs(TestPath, vocab, detector, extractor);
     cout << "Generating BOW for query images: " << QueryPath << endl;
     Mat BOWQuery = generateBOWImageDescs(QueryPath, vocab, detector, extractor);
 
     if(fabmap) {
-        Mat result = openFABMAP(BOWQuery,
+        vector<of2c::IMatch> matches = openFABMAP(BOWQuery,
                                 BOWTest,
                                 fabmap);
 
+        cout << "FABMap Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND) << endl;
+
+        Mat confusion_mat(BOWQuery.rows, BOWTest.rows, CV_32F,0.0);
+
+        Mat cvMatches(BOWQuery.rows,2 ,CV_32F, numeric_limits<float>::max());
+        for(vector<of2c::IMatch>::iterator l = matches.begin(); l != matches.end(); l++) {
+
+            if ((l->match>0.01) && (l->imgIdx != -1))
+            {
+                confusion_mat.at<float>(l->queryIdx, l->imgIdx) = l->match;
+                cvMatches.at<float>(l->queryIdx,0) = float(l->imgIdx);
+                cvMatches.at<float>(l->queryIdx,1) = float(l->match);
+                cout << "Bleu: " << l->queryIdx << " - " << l->imgIdx << " - " << l->match << " " << cvMatches.at<float>(l->queryIdx,1) << endl;
+            }
+        }
+        cout << cvMatches;
         cout << "Saving results: " << CorrespondenceImageResults << endl;
         double ma, mi;
-        minMaxLoc(result,&mi,&ma);
-        result = 255*(result - mi)/ma;
-        imwrite(CorrespondenceImageResults,result);
+        minMaxLoc(confusion_mat,&mi,&ma);
+        confusion_mat = 255*(confusion_mat - mi)/(ma-mi);
+        imwrite(CorrespondenceImageResults,confusion_mat);
+
+
+        showLoopsDetections(cvMatches.t(), QueryPath,  TestPath, confusion_mat, ResultsPath, 2.0);
 
     }
 
@@ -1140,6 +1154,19 @@ vector<Mat> loadDatasetFromVideo( string path ) {
     return images;
 }
 
+VideoCapture loadDatasetVideo( string path ) {
+    VideoCapture movie;
+    movie.open(path);
+
+    if (!movie.isOpened()) {
+        cerr << path << ": training movie not found" << endl;
+        return movie;
+    }
+
+    cout << "Loading video: " << path << endl;
+    return movie;
+}
+
 void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold = 0.99)
 {
     double ma,mi;
@@ -1176,6 +1203,97 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
         if( score_ptr[x] < threshold )
         {
             oldImages[index].copyTo( Mat(appended, Rect(appended.cols/2, 0, appended.cols/2, appended.rows) ));
+            circle(CorrespondenceImage,Point(index,x),1,Scalar(255,0,0),-1);
+        }
+        else
+            circle(CorrespondenceImage,Point(index,x),1,Scalar(0,0,255),-1);
+
+        /* The lower the score, the lower the differences between images */
+        if( score_ptr[x] < threshold )
+            sprintf( temp, "Old image [%03d]", index );
+        else
+            sprintf( temp, "Old image [None]" );
+
+        addText( appended, temp, Point( appended.cols/2 + 20, 20 ), font );
+
+        sprintf( temp, "New image [%03d]", x );
+        addText( appended, temp, Point( 10, 20 ), font );
+
+
+        cout << static_cast<float>(score_ptr[x]) << " - " << threshold << endl;
+        if( score_ptr[x] < threshold )
+        {
+            sprintf( name, "%s/I_new_%06d_old_%06d_%.3f.png", ResultsPath.c_str(), x, index, score_ptr[x] );
+            imwrite(name,appended);
+        }
+
+        imshow( "", appended );
+        imshow("matches", CorrespondenceImage);
+        waitKey(500);
+        fflush(stdout);
+    }
+    sprintf( name, "%s/matches.png", ResultsPath.c_str());
+    imwrite(name,CorrespondenceImage);
+}
+
+Mat getFrameFromVideo(VideoCapture movie, int frame)
+{
+    if(movie.set(CV_CAP_PROP_POS_FRAMES,frame))
+    {
+        Mat frame;
+        movie.retrieve(frame);
+        imshow("frame",frame);
+        waitKey();
+        return frame;
+    }
+}
+
+Mat getFrameFromFile(string path, int frame)
+{
+    char name[255];
+    sprintf(name,path.c_str(),frame);
+    return imread(name);
+}
+
+void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold)
+{
+    double ma,mi;
+
+    minMaxLoc(CorrespondenceImage,&mi,&ma);
+    CorrespondenceImage = 255*(CorrespondenceImage-mi)/(ma-mi);
+    Mat corres;
+    CorrespondenceImage.convertTo(corres,CV_8U);
+    cvtColor(corres,CorrespondenceImage,CV_GRAY2RGB);
+
+    CvFont font = cvFontQt("Helvetica", 20.0, CV_RGB(255, 0, 0) );
+    namedWindow("");
+    moveWindow("", 0, 0);
+
+    char temp[100], name[255];
+
+    float * index_ptr = matches.ptr<float>(0);
+    float * score_ptr = matches.ptr<float>(1);
+
+    Mat appended( getFrameFromFile(newImages, 0).rows,getFrameFromFile(newImages, 0).cols*2, getFrameFromFile(newImages, 0).type(), Scalar(0) );
+
+    uint sizeDataset = 180;//newImages.get(CV_CAP_PROP_FRAME_COUNT);
+    cout << sizeDataset << endl;
+
+    for( uint x = 0; x < sizeDataset; x++ ) {
+
+        cout << "\r Image " << x << "/" << sizeDataset << " (" << 100.0*float(x)/sizeDataset<< "%)      ";
+
+        int index = static_cast<int>(index_ptr[x]);
+
+        //cout << index << endl;
+        /* Append the images together */
+        appended.setTo(Scalar(0));
+
+        getFrameFromFile(newImages, x).copyTo( Mat(appended, Rect(0, 0, appended.cols/2, appended.rows) ));
+
+        if( score_ptr[x] < threshold )
+        {
+            getFrameFromFile(oldImages, index).copyTo( Mat(appended, Rect(appended.cols/2, 0, appended.cols/2, appended.rows) ));
             circle(CorrespondenceImage,Point(index,x),1,Scalar(255,0,0),-1);
         }
         else
@@ -1333,8 +1451,10 @@ int RunFABMapSeqSLAM(FileStorage fs)
     }
     fs.release();
 
-    vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
-    vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
+    //vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
+    //vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
+    VideoCapture newImages = loadDatasetVideo( QueryPath );
+    VideoCapture oldImages = loadDatasetVideo( TestPath );
 
     SchvaczSLAM schvarczSlam(detector,extractor,vocab,bowIDFWeights.t());
     schvarczSlam.setBOWType(BOWType);
@@ -1351,7 +1471,7 @@ int RunFABMapSeqSLAM(FileStorage fs)
     minMaxLoc(CorrespondenceImage,&mi,&ma);
     imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
+    showLoopsDetections(matches, QueryPath, TestPath, CorrespondenceImage, ResultsPath, threshold);
     return 0;
 }
 
@@ -1445,7 +1565,8 @@ int RunFABMAP(FileStorage fs)
             result = openFABMAP(fs["FilePaths"]["TestPath"],
                                 fs["FilePaths"]["QueryPath"], fabmap,
                                 fs["FilePaths"]["Vocabulary"],
-                                fs["FilePaths"]["CorrespondenceImageResults"], detector, extractor);
+                                fs["FilePaths"]["CorrespondenceImageResults"],
+                                fs["openFabMapOptions"]["ResultsPath"], detector, extractor);
         }
 
     } else {
@@ -1540,7 +1661,8 @@ int RunFABMAPFull(FileStorage fs)
             result += openFABMAP(fs["FilePaths"]["TestPath"],
                                 fs["FilePaths"]["QueryPath"], fabmap,
                                 fs["FilePaths"]["Vocabulary"],
-                                fs["FilePaths"]["CorrespondenceImageResults"], detector, extractor);
+                                fs["FilePaths"]["CorrespondenceImageResults"],
+                                fs["openFabMapOptions"]["ResultsPath"], detector, extractor);
         }
 
     } else {

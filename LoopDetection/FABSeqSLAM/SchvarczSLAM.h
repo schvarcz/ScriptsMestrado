@@ -36,7 +36,9 @@ public:
 
     void init();
     Mat apply(vector<Mat> QueryImages, vector<Mat> TestImages);
+    Mat apply(VideoCapture QueryImages, VideoCapture TestImages);
     Mat calcDifferenceMatrix( vector<Mat>& QueryImages, vector<Mat>& TestImages );
+    Mat calcDifferenceMatrix(VideoCapture &QueryImages, VideoCapture &TestImages);
 
     pair<int, double> findMatch( Mat& diff_mat, int N, int matching_dist );
     Mat findMatches( Mat& diff_mat, int matching_dist = 10 );
@@ -56,7 +58,9 @@ public:
 
     Mat generateVocabulary(vector<Mat> train_set);
 
+    Mat generateBOWImageDescs(VideoCapture movie, int BOW_TYPE);
     Mat generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE = BOW_NORM);
+    Mat generateBOWImageDescs(Mat frame, Mat &schvarczSLAMTrainData, BOWImgDescriptorExtractor bide, int BOW_TYPE);
     Mat getCorrespondenceMatrix(){ return occurrence; }
     void setBOWType(int BOWType){ this->BOWType = BOWType; }
     int getBOWType(){ return BOWType; }
