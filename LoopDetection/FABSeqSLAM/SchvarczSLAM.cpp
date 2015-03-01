@@ -551,6 +551,7 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
     Mat diff_mat3C;
     cvtColor(diff_mat,diff_mat3C,CV_GRAY2BGR);
 
+    Mat imgMedias(diff_mat.rows,diff_mat.cols,CV_32F,Scalar(0.0));
     Mat matches(diff_mat.rows,2,CV_32F,Scalar(numeric_limits<float>::max()));
     for(int y=0; y < diff_mat.rows-RWindow - 2*maxHalfWindowMeanShiftSize; y++)
     {
@@ -577,6 +578,7 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
             cout << reMean.val[0] << endl;
             if (reMean.val[0] > maxVar)
             {
+                imgMedias.at<float>(y,x) = 255*reMean.val[0];
                 cout << "  Passou MAXVar " << x << "x" << y << endl;
                 Vector < Point > line ;
                 for(int i=0;i<RWindow;i++)
@@ -612,6 +614,7 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
                 }
             }
         }
+        imwrite("media.png",imgMedias);
         cout << "LineRank: " << bestRawMatch << " - " << bestLSEMatch << " - " << matchSum << endl;
         match.copyTo(matches.row(y+RWindow/2+maxHalfWindowMeanShiftSize));
         //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
