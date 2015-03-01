@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
 #include <fstream>
+#include <time.h>
 
 #ifdef OPENCV2P4
 #include <opencv2/nonfree/nonfree.hpp>
@@ -17,7 +18,12 @@
 #include "OpenSeqSLAM.h"
 #include "fabseqslam.h"
 #include "SchvarczSLAM.h"
+#include "lse.h"
+#include "ransac.h"
 
+#ifndef CLOCKS_PER_SECOND
+#define CLOCKS_PER_SECOND 1000000.0
+#endif
 using namespace std;
 using namespace cv;
 
@@ -51,6 +57,7 @@ int openFABMAP(string testPath,
                string resultsPath,
                bool addNewOnly);
 
+void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold = 0.99);
 /*
 helper functions
 */
@@ -611,7 +618,7 @@ int openFABMAP(string testPath,
 /*
 Run FabMap on a test dataset
 */
-Mat openFABMAP(Mat queryImageDescs,
+vector<of2c::IMatch> openFABMAP(Mat queryImageDescs,
                Mat testImageDescs,
                of2c::FabMap *fabmap)
 {
@@ -619,19 +626,11 @@ Mat openFABMAP(Mat queryImageDescs,
     //running openFABMAP
     cout << "Running openFABMAP" << endl;
     vector<of2c::IMatch> matches;
-    vector<of2c::IMatch>::iterator l;
-
-    Mat confusion_mat(queryImageDescs.rows, testImageDescs.rows, CV_64FC1);
-    confusion_mat = Scalar(0); // init to 0's
 
     //automatically comparing a whole dataset
     fabmap->compare(queryImageDescs, testImageDescs, matches);
-    cout.precision(3);
-    for(l = matches.begin(); l != matches.end(); l++) {
-        confusion_mat.at<double>(l->queryIdx, l->imgIdx) = l->match;
-    }
-    cout.precision(0);
-    return confusion_mat;
+
+    return matches;
 }
 
 
@@ -640,6 +639,7 @@ int openFABMAP(string TestPath,
                of2c::FabMap *fabmap,
                string vocabPath,
                string CorrespondenceImageResults,
+               string ResultsPath,
                Ptr<FeatureDetector> detector,
                Ptr<DescriptorExtractor> extractor)
 {
@@ -656,21 +656,41 @@ int openFABMAP(string TestPath,
     }
     fs.release();
 
+    const clock_t begin_time = clock();
     cout << "Generating BOW for test images: " << TestPath << endl;
     Mat BOWTest = generateBOWImageDescs(TestPath, vocab, detector, extractor);
     cout << "Generating BOW for query images: " << QueryPath << endl;
     Mat BOWQuery = generateBOWImageDescs(QueryPath, vocab, detector, extractor);
 
     if(fabmap) {
-        Mat result = openFABMAP(BOWQuery,
+        vector<of2c::IMatch> matches = openFABMAP(BOWQuery,
                                 BOWTest,
                                 fabmap);
 
+        cout << "FABMap Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND) << endl;
+
+        Mat confusion_mat(BOWQuery.rows, BOWTest.rows, CV_32F,0.0);
+
+        Mat cvMatches(BOWQuery.rows,2 ,CV_32F, numeric_limits<float>::max());
+        for(vector<of2c::IMatch>::iterator l = matches.begin(); l != matches.end(); l++) {
+
+            if ((l->match>0.01) && (l->imgIdx != -1))
+            {
+                confusion_mat.at<float>(l->queryIdx, l->imgIdx) = l->match;
+                cvMatches.at<float>(l->queryIdx,0) = float(l->imgIdx);
+                cvMatches.at<float>(l->queryIdx,1) = float(l->match);
+                cout << "Bleu: " << l->queryIdx << " - " << l->imgIdx << " - " << l->match << " " << cvMatches.at<float>(l->queryIdx,1) << endl;
+            }
+        }
+        cout << cvMatches;
         cout << "Saving results: " << CorrespondenceImageResults << endl;
         double ma, mi;
-        minMaxLoc(result,&mi,&ma);
-        result = 255*(result - mi)/ma;
-        imwrite(CorrespondenceImageResults,result);
+        minMaxLoc(confusion_mat,&mi,&ma);
+        confusion_mat = 255*(confusion_mat - mi)/(ma-mi);
+        imwrite(CorrespondenceImageResults,confusion_mat);
+
+
+        showLoopsDetections(cvMatches.t(), QueryPath,  TestPath, confusion_mat, ResultsPath, 2.0);
 
     }
 
@@ -1134,6 +1154,19 @@ vector<Mat> loadDatasetFromVideo( string path ) {
     return images;
 }
 
+VideoCapture loadDatasetVideo( string path ) {
+    VideoCapture movie;
+    movie.open(path);
+
+    if (!movie.isOpened()) {
+        cerr << path << ": training movie not found" << endl;
+        return movie;
+    }
+
+    cout << "Loading video: " << path << endl;
+    return movie;
+}
+
 void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold = 0.99)
 {
     double ma,mi;
@@ -1203,6 +1236,97 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
     imwrite(name,CorrespondenceImage);
 }
 
+Mat getFrameFromVideo(VideoCapture movie, int frame)
+{
+    if(movie.set(CV_CAP_PROP_POS_FRAMES,frame))
+    {
+        Mat frame;
+        movie.retrieve(frame);
+        imshow("frame",frame);
+        waitKey();
+        return frame;
+    }
+}
+
+Mat getFrameFromFile(string path, int frame)
+{
+    char name[255];
+    sprintf(name,path.c_str(),frame);
+    return imread(name);
+}
+
+void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat CorrespondenceImage, string ResultsPath,float threshold)
+{
+    double ma,mi;
+
+    minMaxLoc(CorrespondenceImage,&mi,&ma);
+    CorrespondenceImage = 255*(CorrespondenceImage-mi)/(ma-mi);
+    Mat corres;
+    CorrespondenceImage.convertTo(corres,CV_8U);
+    cvtColor(corres,CorrespondenceImage,CV_GRAY2RGB);
+
+    CvFont font = cvFontQt("Helvetica", 20.0, CV_RGB(255, 0, 0) );
+    namedWindow("");
+    moveWindow("", 0, 0);
+
+    char temp[100], name[255];
+
+    float * index_ptr = matches.ptr<float>(0);
+    float * score_ptr = matches.ptr<float>(1);
+
+    Mat appended( getFrameFromFile(newImages, 0).rows,getFrameFromFile(newImages, 0).cols*2, getFrameFromFile(newImages, 0).type(), Scalar(0) );
+
+    uint sizeDataset = 180;//newImages.get(CV_CAP_PROP_FRAME_COUNT);
+    cout << sizeDataset << endl;
+
+    for( uint x = 0; x < sizeDataset; x++ ) {
+
+        cout << "\r Image " << x << "/" << sizeDataset << " (" << 100.0*float(x)/sizeDataset<< "%)      ";
+
+        int index = static_cast<int>(index_ptr[x]);
+
+        //cout << index << endl;
+        /* Append the images together */
+        appended.setTo(Scalar(0));
+
+        getFrameFromFile(newImages, x).copyTo( Mat(appended, Rect(0, 0, appended.cols/2, appended.rows) ));
+
+        if( score_ptr[x] < threshold )
+        {
+            getFrameFromFile(oldImages, index).copyTo( Mat(appended, Rect(appended.cols/2, 0, appended.cols/2, appended.rows) ));
+            circle(CorrespondenceImage,Point(index,x),1,Scalar(255,0,0),-1);
+        }
+        else
+            circle(CorrespondenceImage,Point(index,x),1,Scalar(0,0,255),-1);
+
+        /* The lower the score, the lower the differences between images */
+        if( score_ptr[x] < threshold )
+            sprintf( temp, "Old image [%03d]", index );
+        else
+            sprintf( temp, "Old image [None]" );
+
+        addText( appended, temp, Point( appended.cols/2 + 20, 20 ), font );
+
+        sprintf( temp, "New image [%03d]", x );
+        addText( appended, temp, Point( 10, 20 ), font );
+
+
+        cout << static_cast<float>(score_ptr[x]) << " - " << threshold << endl;
+        if( score_ptr[x] < threshold )
+        {
+            sprintf( name, "%s/I_new_%06d_old_%06d_%.3f.png", ResultsPath.c_str(), x, index, score_ptr[x] );
+            imwrite(name,appended);
+        }
+
+        imshow( "", appended );
+        imshow("matches", CorrespondenceImage);
+        waitKey(500);
+        fflush(stdout);
+    }
+    sprintf( name, "%s/matches.png", ResultsPath.c_str());
+    imwrite(name,CorrespondenceImage);
+}
+
 void RunSeqSLAM(FileStorage fs)
 {
 
@@ -1212,6 +1336,7 @@ void RunSeqSLAM(FileStorage fs)
             CorrespondenceImageResults = fs["FilePaths"]["CorrespondenceImageResults"];
 
     float threshold = fs["SeqSLAM"]["Threshold"];
+    int RWindow = fs["SeqSLAM"]["RWindow"];
 
     vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
     vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
@@ -1222,8 +1347,11 @@ void RunSeqSLAM(FileStorage fs)
     vector<Mat> preprocessed_new = seq_slam.preprocess( newImages );
     vector<Mat> preprocessed_old = seq_slam.preprocess( oldImages );
 
+    seq_slam.RWindow = RWindow;
     /* Find the matches */
+    const clock_t begin_time = clock();
     Mat matches = seq_slam.apply( preprocessed_new, preprocessed_old );
+    cout << "SeqSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
     Mat CorrespondenceImage = seq_slam.getCorrespondenceMatrix();
 
     double mi, ma;
@@ -1281,7 +1409,10 @@ int RunFABMapSeqSLAM(FileStorage fs)
             vocabPath = fs["FilePaths"]["Vocabulary"],
             bowIDFWeightsPath = fs["FilePaths"]["IDFWeights"];
 
-    float threshold = fs["SchvarczSLAM"]["Threshold"];
+    float threshold = fs["SchvarczSLAM"]["Threshold"],
+            maxVar = fs["SchvarczSLAM"]["MaxVar"];
+    int RWindow = fs["SchvarczSLAM"]["RWindow"],
+            maxHalfWindowMeanShiftSize = fs["SchvarczSLAM"]["maxHalfWindowMeanShiftSize"];
 
     Ptr<FeatureDetector> detector = generateDetector(fs);
     if(!detector) {
@@ -1296,8 +1427,6 @@ int RunFABMapSeqSLAM(FileStorage fs)
     }
 
     int BOWType = generatorBOWType(fs["SchvarczSLAM"]["BOWType"]);
-
-    //    of2c::FabMap *fabmap = generateFABMAPInstance(fs);
 
     //load vocabulary
     cout << "Loading Vocabulary" << endl;
@@ -1322,19 +1451,27 @@ int RunFABMapSeqSLAM(FileStorage fs)
     }
     fs.release();
 
-    vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
-    vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
+    //vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
+    //vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
+    VideoCapture newImages = loadDatasetVideo( QueryPath );
+    VideoCapture oldImages = loadDatasetVideo( TestPath );
 
     SchvaczSLAM schvarczSlam(detector,extractor,vocab,bowIDFWeights.t());
     schvarczSlam.setBOWType(BOWType);
+    schvarczSlam.RWindow = RWindow;
+    schvarczSlam.maxVar = maxVar;
+    schvarczSlam.maxHalfWindowMeanShiftSize = maxHalfWindowMeanShiftSize;
+
+    const clock_t begin_time = clock();
     Mat matches = schvarczSlam.apply(newImages,oldImages);
+    cout << "SchvarczSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
     Mat CorrespondenceImage = schvarczSlam.getCorrespondenceMatrix();
 
     double mi, ma;
     minMaxLoc(CorrespondenceImage,&mi,&ma);
     imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
+    showLoopsDetections(matches, QueryPath, TestPath, CorrespondenceImage, ResultsPath, threshold);
     return 0;
 }
 
@@ -1428,7 +1565,104 @@ int RunFABMAP(FileStorage fs)
             result = openFABMAP(fs["FilePaths"]["TestPath"],
                                 fs["FilePaths"]["QueryPath"], fabmap,
                                 fs["FilePaths"]["Vocabulary"],
-                                fs["FilePaths"]["CorrespondenceImageResults"], detector, extractor);
+                                fs["FilePaths"]["CorrespondenceImageResults"],
+                                fs["openFabMapOptions"]["ResultsPath"], detector, extractor);
+        }
+
+    } else {
+        cerr << "Incorrect Function Type" << endl;
+        result = -1;
+    }
+
+    cout << "openFABMAP done" << endl;
+    cin.sync(); cin.ignore();
+
+    fs.release();
+
+    return result;
+}
+
+
+/*
+The openFabMapcli accepts a YML settings file, an example of which is provided.
+Modify options in the settings file for desired operation
+*/
+int RunFABMAPFull(FileStorage fs)
+{
+    Ptr<FeatureDetector> detector = generateDetector(fs);
+    if(!detector) {
+        cerr << "Feature Detector error" << endl;
+        return -1;
+    }
+
+    Ptr<DescriptorExtractor> extractor = generateExtractor(fs);
+    if(!extractor) {
+        cerr << "Feature Extractor error" << endl;
+        return -1;
+    }
+
+    //string extractorType = fs["FeatureOptions"]["ExtractorType"];
+    //Ptr<DescriptorExtractor> extractor;
+    //if(extractorType == "SIFT") {
+    //	extractor = new SiftDescriptorExtractor();
+    //} else if(extractorType == "SURF") {
+    //	extractor = new SurfDescriptorExtractor(
+    //		fs["FeatureOptions"]["SurfDetector"]["NumOctaves"],
+    //		fs["FeatureOptions"]["SurfDetector"]["NumOctaveLayers"],
+    //		(int)fs["FeatureOptions"]["SurfDetector"]["Extended"] > 0,
+    //		(int)fs["FeatureOptions"]["SurfDetector"]["Upright"] > 0);
+    //} else {
+    //	cerr << "Could not create Descriptor Extractor. Please specify "
+    //		"extractor type in settings file" << endl;
+    //	return -1;
+    //}
+
+    //run desired function
+    int result = 0;
+    string function = fs["Function"];
+    result += generateVocabTrainData(fs["FilePaths"]["TrainPath"],
+                                    fs["FilePaths"]["TrainFeatDesc"],
+                                    detector, extractor);
+
+    result += trainVocabulary(fs["FilePaths"]["Vocabulary"],
+                             fs["FilePaths"]["TrainFeatDesc"],
+                             fs["VocabTrainOptions"]["ClusterSize"]);
+
+    result += generateBOWImageDescs(fs["FilePaths"]["TrainPath"],
+                                   fs["FilePaths"]["TrainImagDesc"],
+                                   fs["FilePaths"]["Vocabulary"], detector, extractor,
+                                   fs["BOWOptions"]["MinWords"]);
+
+    result += generateBOWIDFWeights(fs["FilePaths"]["TrainImagDesc"],
+                                   fs["FilePaths"]["IDFWeights"]);
+
+    result += trainChowLiuTree(fs["FilePaths"]["ChowLiuTree"],
+                              fs["FilePaths"]["TrainImagDesc"],
+                              fs["ChowLiuOptions"]["LowerInfoBound"]);
+
+    result += generateBOWImageDescs(fs["FilePaths"]["TestPath"],
+                                   fs["FilePaths"]["TestImageDesc"],
+                                   fs["FilePaths"]["Vocabulary"], detector, extractor,
+                                   fs["BOWOptions"]["MinWords"]);
+
+    if (function == "RunOpenFABMAP") {
+        string placeAddOption = fs["FabMapPlaceAddition"];
+        bool addNewOnly = (placeAddOption == "NewMaximumOnly");
+        of2c::FabMap *fabmap = generateFABMAPInstance(fs);
+        if(fabmap) {
+                result += openFABMAP(fs["FilePaths"]["TestImageDesc"], fabmap,
+                        fs["FilePaths"]["Vocabulary"],
+                        fs["FilePaths"]["FabMapResults"], addNewOnly);
+        }
+
+    }  else if (function == "RunOpenFABMAPByTranning") {
+        of2c::FabMap *fabmap = generateFABMAPInstance(fs);
+        if(fabmap) {
+            result += openFABMAP(fs["FilePaths"]["TestPath"],
+                                fs["FilePaths"]["QueryPath"], fabmap,
+                                fs["FilePaths"]["Vocabulary"],
+                                fs["FilePaths"]["CorrespondenceImageResults"],
+                                fs["openFabMapOptions"]["ResultsPath"], detector, extractor);
         }
 
     } else {
@@ -1452,6 +1686,559 @@ int help(void)
 {
     cout << "Usage: FABSeqSLAM -s settingsfile" << endl;
     return 0;
+}
+
+void testLSE1()
+{
+    cout << "TesteLSE1" << endl;
+    Mat pts(2,5,CV_32F);
+    for (int x=0;x<pts.cols;x++)
+        pts.at<float>(0,x) = float(x);
+    pts.at<float>(1,  0 ) = 2 ;
+    pts.at<float>(1,  1 ) = 0 ;
+    pts.at<float>(1,  2 ) = 0;
+    pts.at<float>(1,  3 ) = 2;
+    pts.at<float>(1,  4 ) = 6;
+    pts = pts.t();
+
+    LSE lse;
+    Mat params = lse.model(pts);
+    cout << "Params: " << pts << endl;
+    cout << "Params: " << params << endl;
+}
+
+void testLSE2()
+{
+    cout << "TesteLSE2" << endl;
+    Mat pts(2,100,CV_32F);
+    for (int x=0;x<pts.cols;x++)
+        pts.at<float>(0,x) = float(x);
+    pts.at<float>(1,  0 ) = -445.267302865 ;
+    pts.at<float>(1,  1 ) = -100.003592336 ;
+    pts.at<float>(1,  2 ) = -297.050598923 ;
+    pts.at<float>(1,  3 ) = -111.414221236 ;
+    pts.at<float>(1,  4 ) = 941.825076237 ;
+    pts.at<float>(1,  5 ) = -321.34525499 ;
+    pts.at<float>(1,  6 ) = 438.482637526 ;
+    pts.at<float>(1,  7 ) = -702.706451548 ;
+    pts.at<float>(1,  8 ) = -341.783632207 ;
+    pts.at<float>(1,  9 ) = 612.997082795 ;
+    pts.at<float>(1,  10 ) = 441.313244946 ;
+    pts.at<float>(1,  11 ) = 532.955583181 ;
+    pts.at<float>(1,  12 ) = -442.040207288 ;
+    pts.at<float>(1,  13 ) = 771.211974348 ;
+    pts.at<float>(1,  14 ) = 648.917795481 ;
+    pts.at<float>(1,  15 ) = 336.764539538 ;
+    pts.at<float>(1,  16 ) = 767.525485044 ;
+    pts.at<float>(1,  17 ) = -894.718013378 ;
+    pts.at<float>(1,  18 ) = 421.009523594 ;
+    pts.at<float>(1,  19 ) = 867.951457584 ;
+    pts.at<float>(1,  20 ) = -11.5334207505 ;
+    pts.at<float>(1,  21 ) = 1237.74961439 ;
+    pts.at<float>(1,  22 ) = -93.0346884437 ;
+    pts.at<float>(1,  23 ) = 775.103644994 ;
+    pts.at<float>(1,  24 ) = 1075.50394509 ;
+    pts.at<float>(1,  25 ) = -148.249684919 ;
+    pts.at<float>(1,  26 ) = 1013.56552909 ;
+    pts.at<float>(1,  27 ) = 639.356105195 ;
+    pts.at<float>(1,  28 ) = 1449.69550958 ;
+    pts.at<float>(1,  29 ) = 780.910674168 ;
+    pts.at<float>(1,  30 ) = 826.37799663 ;
+    pts.at<float>(1,  31 ) = 1319.91181648 ;
+    pts.at<float>(1,  32 ) = 1183.11322 ;
+    pts.at<float>(1,  33 ) = 1575.05565735 ;
+    pts.at<float>(1,  34 ) = 371.917868799 ;
+    pts.at<float>(1,  35 ) = 1869.38014792 ;
+    pts.at<float>(1,  36 ) = 961.872044281 ;
+    pts.at<float>(1,  37 ) = 1599.23556361 ;
+    pts.at<float>(1,  38 ) = 1083.17328461 ;
+    pts.at<float>(1,  39 ) = 2193.58228314 ;
+    pts.at<float>(1,  40 ) = 1953.14855119 ;
+    pts.at<float>(1,  41 ) = 2103.00076541 ;
+    pts.at<float>(1,  42 ) = 2550.27032003 ;
+    pts.at<float>(1,  43 ) = 1392.59207363 ;
+    pts.at<float>(1,  44 ) = 2344.14293519 ;
+    pts.at<float>(1,  45 ) = 2306.54716779 ;
+    pts.at<float>(1,  46 ) = 2235.929142 ;
+    pts.at<float>(1,  47 ) = 2564.01764847 ;
+    pts.at<float>(1,  48 ) = 2325.22137544 ;
+    pts.at<float>(1,  49 ) = 2691.19966432 ;
+    pts.at<float>(1,  50 ) = 3227.4397964 ;
+    pts.at<float>(1,  51 ) = 2226.89151462 ;
+    pts.at<float>(1,  52 ) = 2510.83469783 ;
+    pts.at<float>(1,  53 ) = 2747.43731226 ;
+    pts.at<float>(1,  54 ) = 2098.93980048 ;
+    pts.at<float>(1,  55 ) = 3123.97023786 ;
+    pts.at<float>(1,  56 ) = 3257.28757952 ;
+    pts.at<float>(1,  57 ) = 3150.87113505 ;
+    pts.at<float>(1,  58 ) = 3578.51273722 ;
+    pts.at<float>(1,  59 ) = 3085.86862447 ;
+    pts.at<float>(1,  60 ) = 4321.62325808 ;
+    pts.at<float>(1,  61 ) = 4491.41985395 ;
+    pts.at<float>(1,  62 ) = 3792.53850562 ;
+    pts.at<float>(1,  63 ) = 3360.3285873 ;
+    pts.at<float>(1,  64 ) = 4065.37726169 ;
+    pts.at<float>(1,  65 ) = 3899.47192729 ;
+    pts.at<float>(1,  66 ) = 5130.21869209 ;
+    pts.at<float>(1,  67 ) = 4710.64870619 ;
+    pts.at<float>(1,  68 ) = 4356.36506042 ;
+    pts.at<float>(1,  69 ) = 5223.03245095 ;
+    pts.at<float>(1,  70 ) = 4549.51439295 ;
+    pts.at<float>(1,  71 ) = 5390.51094568 ;
+    pts.at<float>(1,  72 ) = 6026.65848251 ;
+    pts.at<float>(1,  73 ) = 4539.22421737 ;
+    pts.at<float>(1,  74 ) = 5018.27577085 ;
+    pts.at<float>(1,  75 ) = 5487.32862174 ;
+    pts.at<float>(1,  76 ) = 6545.73485707 ;
+    pts.at<float>(1,  77 ) = 5832.87366622 ;
+    pts.at<float>(1,  78 ) = 5672.22241403 ;
+    pts.at<float>(1,  79 ) = 6344.11705429 ;
+    pts.at<float>(1,  80 ) = 6891.56831752 ;
+    pts.at<float>(1,  81 ) = 6268.97131779 ;
+    pts.at<float>(1,  82 ) = 6678.228422 ;
+    pts.at<float>(1,  83 ) = 7250.13475912 ;
+    pts.at<float>(1,  84 ) = 7278.91216909 ;
+    pts.at<float>(1,  85 ) = 6873.24595323 ;
+    pts.at<float>(1,  86 ) = 7636.97699997 ;
+    pts.at<float>(1,  87 ) = 7659.83934359 ;
+    pts.at<float>(1,  88 ) = 7068.84868161 ;
+    pts.at<float>(1,  89 ) = 8554.74555516 ;
+    pts.at<float>(1,  90 ) = 8113.68680936 ;
+    pts.at<float>(1,  91 ) = 8479.56964217 ;
+    pts.at<float>(1,  92 ) = 8856.79691885 ;
+    pts.at<float>(1,  93 ) = 9406.90128541 ;
+    pts.at<float>(1,  94 ) = 9368.47796499 ;
+    pts.at<float>(1,  95 ) = 8902.93120658 ;
+    pts.at<float>(1,  96 ) = 9492.40077676 ;
+    pts.at<float>(1,  97 ) = 9648.48946518 ;
+    pts.at<float>(1,  98 ) = 8582.89427901 ;
+    pts.at<float>(1,  99 ) = 9509.88587441 ;
+    pts = pts.t();
+
+    LSE lse;
+    Mat params = lse.model(pts);
+    cout << "Params: " << params << endl;
+}
+
+void testLSE3()
+{
+    cout << "TesteLSE3" << endl;
+    Mat pts(2,100,CV_32F);
+    for (int x=0;x<pts.cols;x++)
+        pts.at<float>(0,x) = float(x);
+    pts.at<float>(1,  0 ) = -445.267302865 ;
+    pts.at<float>(1,  1 ) = -100.003592336 ;
+    pts.at<float>(1,  2 ) = -297.050598923 ;
+    pts.at<float>(1,  3 ) = -111.414221236 ;
+    pts.at<float>(1,  4 ) = 941.825076237 ;
+    pts.at<float>(1,  5 ) = -321.34525499 ;
+    pts.at<float>(1,  6 ) = 438.482637526 ;
+    pts.at<float>(1,  7 ) = -702.706451548 ;
+    pts.at<float>(1,  8 ) = -341.783632207 ;
+    pts.at<float>(1,  9 ) = 612.997082795 ;
+    pts.at<float>(1,  10 ) = 441.313244946 ;
+    pts.at<float>(1,  11 ) = 532.955583181 ;
+    pts.at<float>(1,  12 ) = -442.040207288 ;
+    pts.at<float>(1,  13 ) = 771.211974348 ;
+    pts.at<float>(1,  14 ) = 648.917795481 ;
+    pts.at<float>(1,  15 ) = 336.764539538 ;
+    pts.at<float>(1,  16 ) = 767.525485044 ;
+    pts.at<float>(1,  17 ) = -894.718013378 ;
+    pts.at<float>(1,  18 ) = 421.009523594 ;
+    pts.at<float>(1,  19 ) = 867.951457584 ;
+    pts.at<float>(1,  20 ) = -11.5334207505 ;
+    pts.at<float>(1,  21 ) = 1237.74961439 ;
+    pts.at<float>(1,  22 ) = -93.0346884437 ;
+    pts.at<float>(1,  23 ) = 775.103644994 ;
+    pts.at<float>(1,  24 ) = 1075.50394509 ;
+    pts.at<float>(1,  25 ) = -148.249684919 ;
+    pts.at<float>(1,  26 ) = 1013.56552909 ;
+    pts.at<float>(1,  27 ) = 639.356105195 ;
+    pts.at<float>(1,  28 ) = 1449.69550958 ;
+    pts.at<float>(1,  29 ) = 780.910674168 ;
+    pts.at<float>(1,  30 ) = 826.37799663 ;
+    pts.at<float>(1,  31 ) = 1319.91181648 ;
+    pts.at<float>(1,  32 ) = 1183.11322 ;
+    pts.at<float>(1,  33 ) = 1575.05565735 ;
+    pts.at<float>(1,  34 ) = 371.917868799 ;
+    pts.at<float>(1,  35 ) = 1869.38014792 ;
+    pts.at<float>(1,  36 ) = 961.872044281 ;
+    pts.at<float>(1,  37 ) = 1599.23556361 ;
+    pts.at<float>(1,  38 ) = 1083.17328461 ;
+    pts.at<float>(1,  39 ) = 2193.58228314 ;
+    pts.at<float>(1,  40 ) = 1953.14855119 ;
+    pts.at<float>(1,  41 ) = 2103.00076541 ;
+    pts.at<float>(1,  42 ) = 2550.27032003 ;
+    pts.at<float>(1,  43 ) = 1392.59207363 ;
+    pts.at<float>(1,  44 ) = 2344.14293519 ;
+    pts.at<float>(1,  45 ) = 2306.54716779 ;
+    pts.at<float>(1,  46 ) = 2235.929142 ;
+    pts.at<float>(1,  47 ) = 2564.01764847 ;
+    pts.at<float>(1,  48 ) = 2325.22137544 ;
+    pts.at<float>(1,  49 ) = 2691.19966432 ;
+    pts.at<float>(1,  50 ) = 3227.4397964 ;
+    pts.at<float>(1,  51 ) = 2226.89151462 ;
+    pts.at<float>(1,  52 ) = 2510.83469783 ;
+    pts.at<float>(1,  53 ) = 2747.43731226 ;
+    pts.at<float>(1,  54 ) = 2098.93980048 ;
+    pts.at<float>(1,  55 ) = 3123.97023786 ;
+    pts.at<float>(1,  56 ) = 3257.28757952 ;
+    pts.at<float>(1,  57 ) = 3150.87113505 ;
+    pts.at<float>(1,  58 ) = 3578.51273722 ;
+    pts.at<float>(1,  59 ) = 3085.86862447 ;
+    pts.at<float>(1,  60 ) = 4321.62325808 ;
+    pts.at<float>(1,  61 ) = 4491.41985395 ;
+    pts.at<float>(1,  62 ) = 3792.53850562 ;
+    pts.at<float>(1,  63 ) = 3360.3285873 ;
+    pts.at<float>(1,  64 ) = 4065.37726169 ;
+    pts.at<float>(1,  65 ) = 3899.47192729 ;
+    pts.at<float>(1,  66 ) = 5130.21869209 ;
+    pts.at<float>(1,  67 ) = 4710.64870619 ;
+    pts.at<float>(1,  68 ) = 4356.36506042 ;
+    pts.at<float>(1,  69 ) = 5223.03245095 ;
+    pts.at<float>(1,  70 ) = 4549.51439295 ;
+    pts.at<float>(1,  71 ) = 5390.51094568 ;
+    pts.at<float>(1,  72 ) = 6026.65848251 ;
+    pts.at<float>(1,  73 ) = 4539.22421737 ;
+    pts.at<float>(1,  74 ) = 5018.27577085 ;
+    pts.at<float>(1,  75 ) = 5487.32862174 ;
+    pts.at<float>(1,  76 ) = 6545.73485707 ;
+    pts.at<float>(1,  77 ) = 5832.87366622 ;
+    pts.at<float>(1,  78 ) = 5672.22241403 ;
+    pts.at<float>(1,  79 ) = 6344.11705429 ;
+    pts.at<float>(1,  80 ) = 6891.56831752 ;
+    pts.at<float>(1,  81 ) = 6268.97131779 ;
+    pts.at<float>(1,  82 ) = 6678.228422 ;
+    pts.at<float>(1,  83 ) = 7250.13475912 ;
+    pts.at<float>(1,  84 ) = 7278.91216909 ;
+    pts.at<float>(1,  85 ) = 6873.24595323 ;
+    pts.at<float>(1,  86 ) = 7636.97699997 ;
+    pts.at<float>(1,  87 ) = 7659.83934359 ;
+    pts.at<float>(1,  88 ) = 7068.84868161 ;
+    pts.at<float>(1,  89 ) = 8554.74555516 ;
+    pts.at<float>(1,  90 ) = 8113.68680936 ;
+    pts.at<float>(1,  91 ) = 8479.56964217 ;
+    pts.at<float>(1,  92 ) = 8856.79691885 ;
+    pts.at<float>(1,  93 ) = 9406.90128541 ;
+    pts.at<float>(1,  94 ) = 9368.47796499 ;
+    pts.at<float>(1,  95 ) = 8902.93120658 ;
+    pts.at<float>(1,  96 ) = 9492.40077676 ;
+    pts.at<float>(1,  97 ) = 9648.48946518 ;
+    pts.at<float>(1,  98 ) = 8582.89427901 ;
+    pts.at<float>(1,  99 ) = 9509.88587441 ;
+    pts = pts.t();
+
+    LSE lse;
+    Mat params = lse.model(pts);
+    Mat inliers = lse.fit(pts, params, 500);
+    cout << "Inliers: " << inliers.rows << endl;
+}
+
+void testLSE4()
+{
+    cout << "TesteLSE4" << endl;
+    Mat pts(2,100,CV_32F);
+    for (int x=0;x<pts.cols;x++)
+        pts.at<float>(0,x) = float(x);
+    pts.at<float>(1,  0 ) = -445.267302865 ;
+    pts.at<float>(1,  1 ) = -100.003592336 ;
+    pts.at<float>(1,  2 ) = -297.050598923 ;
+    pts.at<float>(1,  3 ) = -111.414221236 ;
+    pts.at<float>(1,  4 ) = 941.825076237 ;
+    pts.at<float>(1,  5 ) = -321.34525499 ;
+    pts.at<float>(1,  6 ) = 438.482637526 ;
+    pts.at<float>(1,  7 ) = -702.706451548 ;
+    pts.at<float>(1,  8 ) = -341.783632207 ;
+    pts.at<float>(1,  9 ) = 612.997082795 ;
+    pts.at<float>(1,  10 ) = 441.313244946 ;
+    pts.at<float>(1,  11 ) = 532.955583181 ;
+    pts.at<float>(1,  12 ) = -442.040207288 ;
+    pts.at<float>(1,  13 ) = 771.211974348 ;
+    pts.at<float>(1,  14 ) = 648.917795481 ;
+    pts.at<float>(1,  15 ) = 336.764539538 ;
+    pts.at<float>(1,  16 ) = 767.525485044 ;
+    pts.at<float>(1,  17 ) = -894.718013378 ;
+    pts.at<float>(1,  18 ) = 421.009523594 ;
+    pts.at<float>(1,  19 ) = 867.951457584 ;
+    pts.at<float>(1,  20 ) = -11.5334207505 ;
+    pts.at<float>(1,  21 ) = 1237.74961439 ;
+    pts.at<float>(1,  22 ) = -93.0346884437 ;
+    pts.at<float>(1,  23 ) = 775.103644994 ;
+    pts.at<float>(1,  24 ) = 1075.50394509 ;
+    pts.at<float>(1,  25 ) = -148.249684919 ;
+    pts.at<float>(1,  26 ) = 1013.56552909 ;
+    pts.at<float>(1,  27 ) = 639.356105195 ;
+    pts.at<float>(1,  28 ) = 1449.69550958 ;
+    pts.at<float>(1,  29 ) = 780.910674168 ;
+    pts.at<float>(1,  30 ) = 826.37799663 ;
+    pts.at<float>(1,  31 ) = 1319.91181648 ;
+    pts.at<float>(1,  32 ) = 1183.11322 ;
+    pts.at<float>(1,  33 ) = 1575.05565735 ;
+    pts.at<float>(1,  34 ) = 371.917868799 ;
+    pts.at<float>(1,  35 ) = 1869.38014792 ;
+    pts.at<float>(1,  36 ) = 961.872044281 ;
+    pts.at<float>(1,  37 ) = 1599.23556361 ;
+    pts.at<float>(1,  38 ) = 1083.17328461 ;
+    pts.at<float>(1,  39 ) = 2193.58228314 ;
+    pts.at<float>(1,  40 ) = 1953.14855119 ;
+    pts.at<float>(1,  41 ) = 2103.00076541 ;
+    pts.at<float>(1,  42 ) = 2550.27032003 ;
+    pts.at<float>(1,  43 ) = 1392.59207363 ;
+    pts.at<float>(1,  44 ) = 2344.14293519 ;
+    pts.at<float>(1,  45 ) = 2306.54716779 ;
+    pts.at<float>(1,  46 ) = 2235.929142 ;
+    pts.at<float>(1,  47 ) = 2564.01764847 ;
+    pts.at<float>(1,  48 ) = 2325.22137544 ;
+    pts.at<float>(1,  49 ) = 2691.19966432 ;
+    pts.at<float>(1,  50 ) = 3227.4397964 ;
+    pts.at<float>(1,  51 ) = 2226.89151462 ;
+    pts.at<float>(1,  52 ) = 2510.83469783 ;
+    pts.at<float>(1,  53 ) = 2747.43731226 ;
+    pts.at<float>(1,  54 ) = 2098.93980048 ;
+    pts.at<float>(1,  55 ) = 3123.97023786 ;
+    pts.at<float>(1,  56 ) = 3257.28757952 ;
+    pts.at<float>(1,  57 ) = 3150.87113505 ;
+    pts.at<float>(1,  58 ) = 3578.51273722 ;
+    pts.at<float>(1,  59 ) = 3085.86862447 ;
+    pts.at<float>(1,  60 ) = 4321.62325808 ;
+    pts.at<float>(1,  61 ) = 4491.41985395 ;
+    pts.at<float>(1,  62 ) = 3792.53850562 ;
+    pts.at<float>(1,  63 ) = 3360.3285873 ;
+    pts.at<float>(1,  64 ) = 4065.37726169 ;
+    pts.at<float>(1,  65 ) = 3899.47192729 ;
+    pts.at<float>(1,  66 ) = 5130.21869209 ;
+    pts.at<float>(1,  67 ) = 4710.64870619 ;
+    pts.at<float>(1,  68 ) = 4356.36506042 ;
+    pts.at<float>(1,  69 ) = 5223.03245095 ;
+    pts.at<float>(1,  70 ) = 4549.51439295 ;
+    pts.at<float>(1,  71 ) = 5390.51094568 ;
+    pts.at<float>(1,  72 ) = 6026.65848251 ;
+    pts.at<float>(1,  73 ) = 4539.22421737 ;
+    pts.at<float>(1,  74 ) = 5018.27577085 ;
+    pts.at<float>(1,  75 ) = 5487.32862174 ;
+    pts.at<float>(1,  76 ) = 6545.73485707 ;
+    pts.at<float>(1,  77 ) = 5832.87366622 ;
+    pts.at<float>(1,  78 ) = 5672.22241403 ;
+    pts.at<float>(1,  79 ) = 6344.11705429 ;
+    pts.at<float>(1,  80 ) = 6891.56831752 ;
+    pts.at<float>(1,  81 ) = 6268.97131779 ;
+    pts.at<float>(1,  82 ) = 6678.228422 ;
+    pts.at<float>(1,  83 ) = 7250.13475912 ;
+    pts.at<float>(1,  84 ) = 7278.91216909 ;
+    pts.at<float>(1,  85 ) = 6873.24595323 ;
+    pts.at<float>(1,  86 ) = 7636.97699997 ;
+    pts.at<float>(1,  87 ) = 7659.83934359 ;
+    pts.at<float>(1,  88 ) = 7068.84868161 ;
+    pts.at<float>(1,  89 ) = 8554.74555516 ;
+    pts.at<float>(1,  90 ) = 8113.68680936 ;
+    pts.at<float>(1,  91 ) = 8479.56964217 ;
+    pts.at<float>(1,  92 ) = 8856.79691885 ;
+    pts.at<float>(1,  93 ) = 9406.90128541 ;
+    pts.at<float>(1,  94 ) = 9368.47796499 ;
+    pts.at<float>(1,  95 ) = 8902.93120658 ;
+    pts.at<float>(1,  96 ) = 9492.40077676 ;
+    pts.at<float>(1,  97 ) = 9648.48946518 ;
+    pts.at<float>(1,  98 ) = 8582.89427901 ;
+    pts.at<float>(1,  99 ) = 9509.88587441 ;
+    pts = pts.t();
+
+    LSE lse;
+    Mat params = lse.model(pts);
+    Mat inliers = lse.fit(pts, params, 500);
+    Mat newPts = lse.compute(pts,params);
+    cout << "Compute: " << newPts << endl;
+}
+
+void draw(Mat img, Vector< Point > pts)
+{
+    Mat drawImg; img.copyTo(drawImg);
+    cvtColor(drawImg, drawImg, CV_GRAY2RGB);
+    for (int i=0; i<pts.size(); i++)
+        circle(drawImg,pts[i],1,Scalar(255,0,0),-1);
+    imshow("Line", drawImg);
+    //waitKey();
+}
+
+Mat vectorToMat(Vector < Point > pts)
+{
+    Mat ret(pts.size(), 2, CV_32F, 0.0);
+
+    for (int i=0; i < pts.size(); i++)
+    {
+        ret.at<float>(i,0) = pts[i].x;
+        ret.at<float>(i,1) = pts[i].y;
+    }
+
+    return ret;
+}
+
+Vector < Point > matToVector(Mat pts)
+{
+    Vector < Point > ret;
+
+    for (int i=0; i <pts.rows; i++)
+        ret.push_back(Point(pts.at<float>(i,0), pts.at<float>(i,1)));
+
+    return ret;
+}
+
+float lineRank(Mat img, Mat pts)
+{
+    float mean = 0;
+    for(int i=0; i<pts.rows; i++)
+        mean += img.at<float>(pts.at<float>(i,1),pts.at<float>(i,0));
+    mean /= pts.rows;
+
+    return mean;
+}
+
+void testMeanShift1()
+{
+    cout << "TestMeanShift 1: MeanShift" << endl;
+    Mat img;
+    cvtColor(imread("results.bmp"),img,CV_RGB2GRAY);
+    img.convertTo(img,CV_32F);
+    imshow("original",img);
+    cout << img.rows << " x " << img.cols << endl;
+    Rect roi(10,140,40,40);
+    Mat imgRect = img(roi);
+    imshow("rect", imgRect);
+
+    double ma,mi;
+    minMaxLoc(imgRect, &mi, &ma);
+    imgRect = (imgRect-mi)/(ma-mi);
+    imgRect = -imgRect + 1;
+    imshow("rectN", imgRect);
+
+    double maxHalfWindowMeanShiftSize = 5;
+
+    Vector < Point > line ;
+    for(int i=0;i<=30;i++)
+    {
+        line.push_back(Point(i+maxHalfWindowMeanShiftSize, i+maxHalfWindowMeanShiftSize));
+    }
+
+    draw(imgRect,line);
+
+    cout << "Rodando meanshift... " << endl;
+    SchvaczSLAM SSLAM;
+    SSLAM.findMatch4(imgRect, line);
+    cout << "done!" << endl;
+    draw(imgRect,line);
+
+    for(int i=0;i<30;i++)
+    {
+        cout << line[i].x << " - " << line[i].y << endl;
+    }
+
+    cout << "LineRank: " << lineRank(imgRect,vectorToMat(line)) << endl;
+
+}
+
+void testMeanShift2()
+{
+    cout << "TestMeanShift 2: LSE" << endl;
+    Mat img;
+    cvtColor(imread("results.bmp"),img,CV_RGB2GRAY);
+    img.convertTo(img,CV_32F);
+
+    Rect roi(10,140,40,40);
+    Mat imgRect = img(roi);
+
+    double ma,mi;
+    minMaxLoc(imgRect, &mi, &ma);
+    imgRect = (imgRect-mi)/(ma-mi);
+    imgRect = -imgRect + 1;
+
+    double maxHalfWindowMeanShiftSize = 5;
+
+    Vector < Point > line ;
+    for(int i=0;i<=30;i++)
+    {
+        line.push_back(Point(i+maxHalfWindowMeanShiftSize, i+maxHalfWindowMeanShiftSize));
+    }
+
+    SchvaczSLAM SSLAM;
+    SSLAM.findMatch4(imgRect, line);
+
+    //Start LSE
+    Mat pts = vectorToMat(line);
+    LSE lse;
+    Mat params = lse.model(pts);
+    pts = lse.compute(pts, params);
+
+    line = matToVector(pts);
+    Mat imgRect3;
+    cvtColor(imgRect, imgRect3, CV_GRAY2RGB);
+
+    for (int i=0; i<line.size()-1; i++)
+        cv::line(imgRect3, line[i], line[i+1], Scalar(255,0,0));
+
+    imshow("Final!!!", imgRect3);
+
+    cout << "LineRank: " << lineRank(imgRect,pts) << endl;
+}
+void testMeanShift3()
+{
+    cout << "TestMeanShift 3: Ransac" << endl;
+    Mat img;
+    cvtColor(imread("results.bmp"),img,CV_RGB2GRAY);
+    img.convertTo(img,CV_32F);
+
+    Rect roi(10,140,40,40);
+    Mat imgRect = img(roi);
+
+    double ma,mi;
+    minMaxLoc(imgRect, &mi, &ma);
+    imgRect = (imgRect-mi)/(ma-mi);
+    imgRect = -imgRect + 1;
+
+    double maxHalfWindowMeanShiftSize = 5;
+
+    Vector < Point > line ;
+    for(int i=0;i<=30;i++)
+    {
+        line.push_back(Point(i+maxHalfWindowMeanShiftSize, i+maxHalfWindowMeanShiftSize));
+    }
+
+    SchvaczSLAM SSLAM;
+    SSLAM.findMatch4(imgRect, line);
+
+    Mat pts = vectorToMat(line);
+    LSE lse;
+
+    Ransac ransac(lse);
+    pts = ransac.compute(pts);
+    line = matToVector(pts);
+    Mat imgRect3;
+    cvtColor(imgRect, imgRect3, CV_GRAY2RGB);
+    for (int i=0; i<line.size()-1; i++)
+        cv::line(imgRect3, line[i], line[i+1], Scalar(255,0,0));
+
+    imshow("Final Ransac!!!", imgRect3);
+    cout << "LineRank: " << lineRank(imgRect,pts) << endl;
+    waitKey();
+}
+
+void testRange()
+{
+    float maxHalfWindowMeanShiftSize =5, xMax = 29;
+    float x[] = {2,5,10,23,24,27};
+    for(int i=0; i<6;i++)
+        cout << x[i] << ": " << MIN(maxHalfWindowMeanShiftSize - MAX(maxHalfWindowMeanShiftSize - x[i],0),
+                                    maxHalfWindowMeanShiftSize - MAX(maxHalfWindowMeanShiftSize + x[i] - xMax,0)) << endl;
+}
+
+void testSuite()
+{
+//    testLSE1();
+//    testLSE2();
+//    testLSE3();
+//    testLSE4();
+    testMeanShift1();
+//    testMeanShift2();
+//    testMeanShift3();
+    testRange();
 }
 
 int main(int argc, const char * argv[])
@@ -1494,8 +2281,12 @@ int main(int argc, const char * argv[])
         RunSeqSLAM(fs);
     else if ( SLAMType == "FABMap" )
         RunFABMAP(fs);
+    else if ( SLAMType == "FABMapFull" )
+        RunFABMAPFull(fs);
     else if ( SLAMType == "FABSeqSLAMOnlyMatches" )
         RunFABMapSeqSLAMOnlyMatches(fs);
+    else if ( SLAMType == "TestSuite" )
+        testSuite();
 
     return 0;
 }

@@ -9,13 +9,17 @@ SOURCES += main.cpp \
     FabMap.cpp \
     ChowLiuTree.cpp \
     BOWMSCTrainer.cpp \
-    SchvarczSLAM.cpp
+    SchvarczSLAM.cpp \
+    lse.cpp \
+    ransac.cpp
 
 HEADERS += \
     OpenSeqSLAM.h \
     fabseqslam.h \
     openfabmap.hpp \
-    SchvarczSLAM.h
+    SchvarczSLAM.h \
+    lse.h \
+    ransac.h
 
 
 
