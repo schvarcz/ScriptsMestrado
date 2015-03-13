@@ -119,7 +119,12 @@ Mat OpenSeqSLAM::preprocess( Mat& image ) {
         cvtColor( result, result, CV_BGR2GRAY );
 
     if( result.cols != imageSize.width && result.rows != imageSize.height )
-        resize( result, result, imageSize, INTER_LANCZOS4 );
+    {
+        Rect roi(0,0,
+                 imageSize.width*(int)(result.cols/imageSize.width),
+                 imageSize.height*(int)(result.rows/imageSize.height));
+        resize( result(roi), result, imageSize, INTER_LANCZOS4 );
+    }
 
     return normalizePatch( result, this->patchSize );
     //return normalizeImage( result );
@@ -130,6 +135,7 @@ Mat OpenSeqSLAM::preprocess( Mat& image ) {
  */
 vector<Mat> OpenSeqSLAM::preprocess( vector<Mat>& images ) {
     vector<Mat> result;
+
     for( int i=0; i< images.size();i++ )
         result.push_back( preprocess( images.at(i) ) );
     return result;
@@ -141,19 +147,47 @@ vector<Mat> OpenSeqSLAM::preprocess( vector<Mat>& images ) {
 Mat OpenSeqSLAM::calcDifferenceMatrix( vector<Mat>& set_1, vector<Mat>& set_2 ) {
     int n = static_cast<int>(set_1.size());
     int m = static_cast<int>(set_2.size());
-    
+
     Mat diff_mat = Mat::zeros(n, m, CV_32FC1 );
-    
+
     for( int i = 0; i < n; i++ ) {
         float * diff_ptr = diff_mat.ptr<float>(i);
-        
+
         /* Difference is between two images is calculated as */
         /* the average sum of absolute difference between them */
         for( int j = 0; j < m; j++ )
           //diff_ptr[j] = sum( abs(set_2[j] - set_1[i]) )[0] / n;
           diff_ptr[j] = sum( abs(set_2[j] - set_1[i]) )[0] / (set_1[i].rows*set_1[i].cols);
     }
-    
+
+    return diff_mat;
+}
+
+Mat OpenSeqSLAM::calcDifferenceMatrix( VideoCapture set_1, VideoCapture set_2 ) {
+    int n = 180; //static_cast<int>(set_1.get(CV_CAP_PROP_FRAME_COUNT));
+    int m = 181; //static_cast<int>(set_2.get(CV_CAP_PROP_FRAME_COUNT));
+
+    Mat diff_mat = Mat::zeros(n, m, CV_32FC1 );
+
+    Mat frame_1, frame_2;
+    int i=0, j;
+
+    while(set_1.read(frame_1)){
+        frame_1 = preprocess(frame_1);
+
+        float * diff_ptr = diff_mat.ptr<float>(i);
+        j=0;
+        /* Difference is between two images is calculated as */
+        /* the average sum of absolute difference between them */
+        set_2.set(CV_CAP_PROP_POS_FRAMES,0.0);
+        while(set_2.read(frame_2)){
+          frame_2 = preprocess(frame_2);
+          diff_ptr[j] = sum( abs(frame_2 - frame_1) )[0] / (frame_1.rows*frame_1.cols);
+          j++;
+        }
+        i++;
+    }
+
     return diff_mat;
 }
 
@@ -272,7 +306,7 @@ pair<int, double> OpenSeqSLAM::findMatch( Mat& diff_mat, int N, int matching_dis
     double min_index_2 = static_cast<int>( std::min_element( score.begin(), score.end() ) - score.begin() );
     double min_val_2 = score[min_index_2];
 
-    return pair<int, double> ( min_index + matching_dist / 2, min_val / min_val_2 );
+    return pair<int, double> ( min_index + 1 + matching_dist / 2, min_val / min_val_2 );
 }
 
 /**
@@ -312,7 +346,21 @@ Mat OpenSeqSLAM::findMatches( Mat& diff_mat, int matching_dist ) {
 Mat OpenSeqSLAM::apply( vector<Mat>& set_1, vector<Mat>& set_2 ) {
     cout << "Calculate Difference Matrix" << endl;
     Mat diff_mat = calcDifferenceMatrix( set_1, set_2 );
-    
+
+    /* Includes additional row on diff matrix with infinite values, to penalize out of bounds cases */
+    Mat inf( 1, diff_mat.cols, diff_mat.type(), Scalar(std::numeric_limits<float>::max()) );
+    vconcat( diff_mat, inf, diff_mat );
+
+    cout << "Enhance local Contrast" << endl;
+    enhanced = enhanceLocalContrast( diff_mat );
+
+    cout << "Find Matches" << endl;
+    return findMatches( enhanced );
+}
+Mat OpenSeqSLAM::apply( VideoCapture set_1, VideoCapture set_2 ) {
+    cout << "Calculate Difference Matrix" << endl;
+    Mat diff_mat = calcDifferenceMatrix( set_1, set_2 );
+
     /* Includes additional row on diff matrix with infinite values, to penalize out of bounds cases */
     Mat inf( 1, diff_mat.cols, diff_mat.type(), Scalar(std::numeric_limits<float>::max()) );
     vconcat( diff_mat, inf, diff_mat );

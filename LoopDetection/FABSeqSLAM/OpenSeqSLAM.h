@@ -33,11 +33,13 @@ public:
     Mat preprocess( Mat& image );
     vector<Mat> preprocess( vector<Mat>& images );
     Mat calcDifferenceMatrix( vector<Mat>& set_1, vector<Mat>& set_2 );
+    Mat calcDifferenceMatrix( VideoCapture set_1, VideoCapture set_2 );
     
     Mat enhanceLocalContrast( Mat& diff_matrix, int local_radius = 10 );
     pair<int, double> findMatch( Mat& diff_mat, int N, int matching_dist );
     Mat findMatches( Mat& diff_mat, int matching_dist = 10 );
-    
+
+    Mat apply( VideoCapture set_1, VideoCapture set_2 );
     Mat apply( vector<Mat>& set_1, vector<Mat>& set_2 );
     Mat getCorrespondenceMatrix(){ return enhanced; }
 

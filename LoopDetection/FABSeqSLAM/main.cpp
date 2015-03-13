@@ -1338,6 +1338,8 @@ void RunSeqSLAM(FileStorage fs)
     float threshold = fs["SeqSLAM"]["Threshold"];
     int RWindow = fs["SeqSLAM"]["RWindow"];
 
+    //VideoCapture newImages = loadDatasetVideo(QueryPath);
+    //VideoCapture oldImages = loadDatasetVideo(TestPath);
     vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
     vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
 
@@ -1351,6 +1353,7 @@ void RunSeqSLAM(FileStorage fs)
     /* Find the matches */
     const clock_t begin_time = clock();
     Mat matches = seq_slam.apply( preprocessed_new, preprocessed_old );
+//    Mat matches = seq_slam.apply( newImages, oldImages );
     cout << "SeqSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
     Mat CorrespondenceImage = seq_slam.getCorrespondenceMatrix();
 
@@ -1359,7 +1362,7 @@ void RunSeqSLAM(FileStorage fs)
     imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
     cout << "Show results" << endl;
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
+    showLoopsDetections(matches, QueryPath, TestPath, CorrespondenceImage, ResultsPath, threshold);
 }
 
 int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
