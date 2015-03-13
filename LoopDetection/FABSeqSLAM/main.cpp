@@ -1369,10 +1369,14 @@ int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
 {
     string TestPath = fs["FilePaths"]["TestPath"],
             QueryPath = fs["FilePaths"]["QueryPath"],
-            ResultsPath = fs["SeqSLAM"]["ResultsPath"],
+            ResultsPath = fs["SchvarczSLAM"]["ResultsPath"],
             CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"];
 
-    float threshold = fs["SchvarczSLAM"]["Threshold"];
+    float threshold = fs["SchvarczSLAM"]["Threshold"],
+            maxVar = fs["SchvarczSLAM"]["MaxVar"];
+    int RWindow = fs["SchvarczSLAM"]["RWindow"],
+            maxHalfWindowMeanShiftSize = fs["SchvarczSLAM"]["maxHalfWindowMeanShiftSize"];
+
 
     Ptr<FeatureDetector> detector = generateDetector(fs);
     if(!detector) {
@@ -1386,20 +1390,27 @@ int RunFABMapSeqSLAMOnlyMatches(FileStorage fs)
         return -1;
     }
 
-    vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
-    vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
-    cout << newImages.size() << " - " << oldImages.size();
+    //vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
+    //vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
 
     SchvaczSLAM schvarczSlam(detector,extractor);
+    schvarczSlam.RWindow = RWindow;
+    schvarczSlam.maxVar = maxVar;
+    schvarczSlam.maxHalfWindowMeanShiftSize = maxHalfWindowMeanShiftSize;
 
     Mat CorrespondenceImage = imread(CorrespondenceImageResults);
     cvtColor(CorrespondenceImage,CorrespondenceImage,CV_RGB2GRAY);
+    CorrespondenceImage.convertTo(CorrespondenceImage,CV_32F);
+    double ma, mi;
+    minMaxIdx(CorrespondenceImage,&mi,&ma);
+    CorrespondenceImage = (CorrespondenceImage -mi)/(ma-mi);
+    //CorrespondenceImage = -CorrespondenceImage+1;
     //CorrespondenceImage = CorrespondenceImage(Rect(0,55,65, CorrespondenceImage.rows-55));
 
-    Mat matches = schvarczSlam.findMatches3(CorrespondenceImage);
+    Mat matches = schvarczSlam.findMatches4(CorrespondenceImage);
 
     cout << matches.rows << " - " << matches.cols << endl;
-    showLoopsDetections(matches, newImages, oldImages, CorrespondenceImage, ResultsPath, threshold);
+    showLoopsDetections(matches, QueryPath, TestPath, CorrespondenceImage, ResultsPath, threshold);
     return 0;
 }
 
