@@ -1,14 +1,5 @@
-//
-//  SchvarczSLAM.h
-//  SchvarczSLAM
-//
-//  Created by Guilherme Schvarcz Franco on 12/01/2015.
-//  Copyright (c) 2015 Guilherme Schvarcz Franco. All rights reserved.
-//
-
-
-#ifndef SCHVACZSLAM_H
-#define SCHVACZSLAM_H
+#ifndef OUTDOORSLAM_H
+#define OUTDOORSLAM_H
 
 #include <iostream>
 #include <iomanip>
@@ -27,27 +18,24 @@ using namespace cv;
 #define BOW_TFIDF_FREQ 3
 #define BOW_TFIDF_NORM 4
 
-class SchvaczSLAM
+
+class OutdoorSLAM
 {
 public:
-    SchvaczSLAM();
-    SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor);
-    SchvaczSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab, Mat BOWIDFWeights);
+public:
+    OutdoorSLAM();
+    OutdoorSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor);
+    OutdoorSLAM(Ptr<FeatureDetector> detector, Ptr<DescriptorExtractor> extractor, Mat vocab, Mat BOWIDFWeights);
 
     void init();
     Mat apply(vector<Mat> QueryImages, vector<Mat> TestImages);
     Mat apply(VideoCapture QueryImages, VideoCapture TestImages);
     Mat calcDifferenceMatrix( vector<Mat>& QueryImages, vector<Mat>& TestImages );
     Mat calcDifferenceMatrix(VideoCapture &QueryImages, VideoCapture &TestImages);
+    Mat calcSequencesMatrix();
 
     pair<int, double> findMatch( Mat& diff_mat, int N, int matching_dist );
     Mat findMatches( Mat& diff_mat, int matching_dist = 10 );
-    Mat findMatch2( Mat& re );
-    Mat findMatches2( Mat& diff_mat );
-    Mat findMatch3( Mat& re );
-    Mat findMatches3( Mat& diff_mat );
-    void findMatch4( Mat& re, Vector< Point > &line , bool d = false);
-    Mat findMatches4( Mat& diff_mat );
 
     //Utils
     Mat vectorToMat(Vector < Point > pts);
@@ -79,4 +67,4 @@ private:
     int BOWType;
 };
 
-#endif // SCHVACZSLAM_H
+#endif // OUTDOORSLAM_H

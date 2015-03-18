@@ -11,7 +11,8 @@ SOURCES += main.cpp \
     BOWMSCTrainer.cpp \
     SchvarczSLAM.cpp \
     lse.cpp \
-    ransac.cpp
+    ransac.cpp \
+    outdoorslam.cpp
 
 HEADERS += \
     OpenSeqSLAM.h \
@@ -19,7 +20,8 @@ HEADERS += \
     openfabmap.hpp \
     SchvarczSLAM.h \
     lse.h \
-    ransac.h
+    ransac.h \
+    outdoorslam.h
 
 
 

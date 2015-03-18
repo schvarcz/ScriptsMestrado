@@ -135,6 +135,41 @@ Mat SchvaczSLAM::generateBOWImageDescs(vector<Mat> dataset, int BOW_TYPE)
     return schvarczSLAMTrainData;
 }
 
+Mat SchvaczSLAM::generateBOW(Mat frame, BOWImgDescriptorExtractor bide)
+{
+    Mat result = frame.clone();
+    if ( result.channels() > 1 )
+        cvtColor( result, result, CV_BGR2GRAY );
+
+    Size patchSize(160,80);
+    Mat patch;
+    double ma, mi;
+
+    Mat bowReturn = Mat::zeros(1, BOWIDFWeights.cols, CV_32F);
+
+
+    for(int y = 0; y < result.rows; y+= patchSize.height ) {
+        for(int x = 0; x < result.cols; x+= patchSize.width ) {
+            /* Extract patch */
+            patch = result(Rect(x, y, patchSize.width, patchSize.height));
+
+            minMaxIdx(patch,&mi,&ma);
+            patch=255*(patch-mi)/(ma-mi);
+
+            vector<KeyPoint> kpts;
+            Mat bow;
+
+            detector->detect(patch, kpts);
+            bide.compute(patch, kpts, bow);
+
+            if (bow.cols != 0)
+                bowReturn+= bow;
+        }
+    }
+
+    return bowReturn;
+}
+
 Mat SchvaczSLAM::generateBOWImageDescs(Mat frame, Mat &schvarczSLAMTrainData, BOWImgDescriptorExtractor bide, int BOW_TYPE)
 {
     vector< vector< int > > pointIdxsOfClusters;
@@ -143,6 +178,7 @@ Mat SchvaczSLAM::generateBOWImageDescs(Mat frame, Mat &schvarczSLAMTrainData, BO
 
     detector->detect(frame, kpts);
     bide.compute(frame, kpts, bow, &pointIdxsOfClusters);
+    //bow = generateBOW(frame,bide);
     if (bow.cols == 0)
     {
         bow = Mat::zeros(1, BOWIDFWeights.cols, CV_32F);
@@ -471,14 +507,16 @@ Vector < Point > SchvaczSLAM::matToVector(Mat pts)
 float SchvaczSLAM::lineRank(Mat img, Mat pts)
 {
     float mean = 0;
+
     for(int i=0; i<pts.rows; i++)
         mean += img.at<float>(pts.at<float>(i,1),pts.at<float>(i,0));
+
     mean /= pts.rows;
 
     return mean;
 }
 
-void SchvaczSLAM::findMatch4( Mat& roi , Vector< Point > &line)
+void SchvaczSLAM::findMatch4( Mat& roi , Vector< Point > &line, bool d)
 {
     int xMax = roi.cols - 1;
     int yMax = roi.rows - 1;
@@ -496,7 +534,6 @@ void SchvaczSLAM::findMatch4( Mat& roi , Vector< Point > &line)
 
             Rect window(pt.x-windowSizeX,pt.y-windowSizeY,
                         2*windowSizeX+1, 2*windowSizeY+1);
-            cout << "Window: " << window.x << "x" << window.y << " - " << window.width << "x" << window.height << endl;
 
             Mat meanShiftWindow = roi(window);
 
@@ -530,6 +567,8 @@ void SchvaczSLAM::findMatch4( Mat& roi , Vector< Point > &line)
             pt.x = newX;
             oldDesv = desv;
             moveLine(line, idx, desv, xMax);
+//            if (d)
+//                draw(roi,line);
             //line[idx] = pt;
         }
     }
@@ -543,7 +582,7 @@ void SchvaczSLAM::draw(Mat img, Vector< Point > pts)
     for (int i=0; i<pts.size(); i++)
         circle(drawImg,pts[i],1,Scalar(255,0,0),-1);
     imshow("Line", drawImg);
-    waitKey(500);
+    //waitKey();
 }
 
 Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
@@ -551,21 +590,19 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
     Mat diff_mat3C;
     cvtColor(diff_mat,diff_mat3C,CV_GRAY2BGR);
 
-    Mat imgMedias(diff_mat.rows,diff_mat.cols,CV_32F,Scalar(0.0));
+    //Mat imgMedias(diff_mat.rows,diff_mat.cols,CV_32F,Scalar(0.0));
     Mat matches(diff_mat.rows,2,CV_32F,Scalar(numeric_limits<float>::max()));
     for(int y=0; y < diff_mat.rows-RWindow - 2*maxHalfWindowMeanShiftSize; y++)
     {
-        cout << "Nova linha: " << y << endl;
         float matchSum = numeric_limits<float>::max();
         float bestRawMatch = numeric_limits<float>::max(), bestLSEMatch = numeric_limits<float>::max();
         Mat match(1,2,CV_32F,Scalar(numeric_limits<float>::max()));
         for(int x=0; x < diff_mat.cols-RWindow - 2*maxHalfWindowMeanShiftSize; x++)
         {
-            cout << "  Nova coluna: " << x << "x" << y << endl;
             Rect roi(x, y,
                      RWindow + 2*maxHalfWindowMeanShiftSize, RWindow + 2*maxHalfWindowMeanShiftSize);
-            cout << "    roi: " << roi.x << "x" << roi.y << " - " << roi.width << "x" << roi.height << endl;
             Mat imgRect;
+
             diff_mat(roi).convertTo(imgRect,CV_32F);
 
             double mi, ma;
@@ -575,17 +612,18 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
             Scalar reMean = mean(imgRect);
 
             imgRect = -imgRect + 1;
-            cout << reMean.val[0] << endl;
+
             if (reMean.val[0] > maxVar)
             {
-                imgMedias.at<float>(y,x) = 255*reMean.val[0];
-                cout << "  Passou MAXVar " << x << "x" << y << endl;
+                //imgMedias.at<float>(y,x) = 255*reMean.val[0];
                 Vector < Point > line ;
                 for(int i=0;i<RWindow;i++)
                 {
                     line.push_back(Point(i+maxHalfWindowMeanShiftSize,
                                          i+maxHalfWindowMeanShiftSize));
                 }
+
+                //draw(imgRect,line);
                 findMatch4(imgRect, line);
 
                 Mat pts = vectorToMat(line);
@@ -608,14 +646,13 @@ Mat SchvaczSLAM::findMatches4( Mat& diff_mat )
                     bestLSEMatch = lseMatch;
                     //Scalar me = mean(pts.col(0));
                     //match.at<float>(0) = (int)(me.val[0]-maxHalfWindowMeanShiftSize+x);
-                    cout << pts.at<float>(pts.rows/2,0) << endl;
                     match.at<float>(0) = (int)(pts.at<float>(pts.rows/2,0)+x);
                     match.at<float>(1) = matchSum;
                 }
             }
         }
-        imwrite("media.png",imgMedias);
-        cout << "LineRank: " << bestRawMatch << " - " << bestLSEMatch << " - " << matchSum << endl;
+        //imwrite("media.png",imgMedias);
+        //cout << "LineRank: " << bestRawMatch << " - " << bestLSEMatch << " - " << matchSum << endl;
         match.copyTo(matches.row(y+RWindow/2+maxHalfWindowMeanShiftSize));
         //cout << retmatch.at<float>(0) << " - " << retmatch.at<float>(1) << endl;
         //circle(diff_mat3C,Point(match.at<float>(0),match.at<float>(1)),1,Scalar(255,0,0),-1);

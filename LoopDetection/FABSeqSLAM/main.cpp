@@ -122,6 +122,122 @@ int showFeatures(string trainPath, Ptr<FeatureDetector> &detector)
 /*
 generate the data needed to train a codebook/vocabulary for bag-of-words methods
 */
+int generateVocabTrainDataPatch(string trainPath,
+                           string vocabTrainDataPath,
+                           Ptr<FeatureDetector> &detector,
+                           Ptr<DescriptorExtractor> &extractor)
+{
+
+    //Do not overwrite any files
+    ifstream checker;
+    checker.open(vocabTrainDataPath.c_str());
+    if(checker.is_open()) {
+        cerr << vocabTrainDataPath << ": Training Data already present" <<
+                     endl;
+        checker.close();
+        return -1;
+    }
+
+    //load training movie
+    VideoCapture movie;
+    movie.open(trainPath);
+    if (!movie.isOpened()) {
+        cerr << trainPath << ": training movie not found" << endl;
+        return -1;
+    }
+
+    //extract data
+    cout << "Extracting Descriptors" << endl;
+
+    Mat vocabTrainData;
+    Mat frame, descs, feats;
+
+    Size patchSize(160,80);
+    Mat patch, patch_mean, patch_stddev, temp;
+    double ma, mi;
+
+    cout.setf(ios_base::fixed);
+    cout.precision(0);
+    while(movie.read(frame)) {
+        imshow("TFrame", frame);
+        cout << "Detecting wafer mode... ";
+        cvtColor(frame,feats,CV_GRAY2RGB);
+
+        vector<KeyPoint> kpts;
+
+        for(int y = 0; y < frame.rows; y+= patchSize.height ) {
+            for(int x = 0; x < frame.cols; x+= patchSize.width ) {
+                /* Extract patch */
+                Rect roi(x, y, patchSize.width, patchSize.height);
+                patch = frame(roi);
+
+                minMaxIdx(patch,&mi,&ma);
+                patch=255*(patch-mi)/(ma-mi);
+
+//                /* Find the mean and std dev, calc  */
+//                meanStdDev( patch, patch_mean, patch_stddev );
+//                double mean_val   = patch_mean.at<double>(0, 0);
+//                double stddev_val = patch_stddev.at<double>(0, 0);
+
+//                /* Well, to avoid buffer issues, let's use double for this iteration */
+//                patch.convertTo( temp, CV_64FC1 );
+
+//                /* In Matlab 127 + x / 0.0 == 0, while in here, 127 + x / 0.0 == 127, so we need to handle that case  */
+//                if( stddev_val > 0.0 ) {
+
+//                    /* Normalize the patch */
+//                    for( MatIterator_<double> itr = temp.begin<double>(); itr != temp.end<double>(); itr++ )
+//                        *itr = cvRound( (*itr - mean_val) / (3*stddev_val) );
+//                }
+//                else
+//                    temp = Scalar::all(0);
+
+//                temp = 127*temp + 127;
+//                temp.convertTo( patch, CV_8UC1 );
+
+                vector<KeyPoint> kptsPath;
+                //detect & extract features
+                detector->detect(patch, kptsPath);
+                extractor->compute(patch, kptsPath, descs);
+                vocabTrainData.push_back(descs);
+                Mat featsr;
+                drawKeypoints(patch, kptsPath, featsr);
+                imshow("Training Features", featsr);
+            }
+        }
+
+        //add all descriptors to the training data
+
+        //show progress
+        drawKeypoints(frame, kpts, feats);
+        imshow("Training Data", feats);
+
+        cout << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
+                            movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%. " <<
+                     vocabTrainData.rows << " descriptors         \r";
+        fflush(stdout);
+
+        if(waitKey(5) == 27) {
+            destroyWindow("Training Data");
+            cout << endl;
+            return -1;
+        }
+
+    }
+    destroyWindow("Training Data");
+    cout << "Done: " << vocabTrainData.rows << " Descriptors" << endl;
+
+    //save the training data
+    FileStorage fs;
+    fs.open(vocabTrainDataPath, FileStorage::WRITE);
+    fs << "VocabTrainData" << vocabTrainData;
+    fs.release();
+
+    return 0;
+}
+/*
+generate the data needed to train a codebook/vocabulary for bag-of-words methods
+*/
 int generateVocabTrainData(string trainPath,
                            string vocabTrainDataPath,
                            Ptr<FeatureDetector> &detector,
@@ -435,9 +551,12 @@ int generateBOWIDFWeights(string bowImageDescPath,
             if (bowImageDesc.at<float>(indexDocument,indexWord) != 0)
                 occurrence++;
         }
-        cout << "\r"<<  indexWord << "° Word " << 100.0*indexWord/bowImageDesc.cols << "%                  ";
+        cout << "\r"<<  indexWord << "° Word " << 100.0*indexWord/bowImageDesc.cols << "%                  " << occurrence;
         fflush(stdout);
-        float idf = log(bowImageDesc.rows/occurrence);
+        float idf = 0;
+        idf = log(bowImageDesc.rows/occurrence);
+
+
         BOWIDFWeights.push_back(idf);
     }
 
@@ -500,17 +619,174 @@ Mat generateBOWImageDescs(string dataPath,
 
     return fabmapTrainData;
 }
+/*
+generate FabMap bag-of-words data : an image descriptor for each frame
+*/
+
+Mat generateBOW(Mat frame, BOWImgDescriptorExtractor bide,
+                             Ptr<FeatureDetector> &detector)
+{
+    Mat result = frame.clone();
+    if ( result.channels() > 1 )
+        cvtColor( result, result, CV_BGR2GRAY );
+
+    Size patchSize(160,80);
+    Mat patch, patch_mean, patch_stddev, temp;
+    double mi, ma;
+
+    Mat bowReturn = Mat::zeros(1, bide.getVocabulary().rows, CV_32F);
+
+
+    for(int y = 0; y < result.rows; y+= patchSize.height ) {
+        for(int x = 0; x < result.cols; x+= patchSize.width ) {
+            /* Extract patch */
+            patch = result(Rect(x, y, patchSize.width, patchSize.height));
+
+
+            minMaxIdx(patch,&mi,&ma);
+            patch=255*(patch-mi)/(ma-mi);
+
+//            /* Find the mean and std dev, calc  */
+//            meanStdDev( patch, patch_mean, patch_stddev );
+//            double mean_val   = patch_mean.at<double>(0, 0);
+//            double stddev_val = patch_stddev.at<double>(0, 0);
+
+//            /* Well, to avoid buffer issues, let's use double for this iteration */
+//            patch.convertTo( temp, CV_64FC1 );
+
+//            /* In Matlab 127 + x / 0.0 == 0, while in here, 127 + x / 0.0 == 127, so we need to handle that case  */
+//            if( stddev_val > 0.0 ) {
+
+//                /* Normalize the patch */
+//                for( MatIterator_<double> itr = temp.begin<double>(); itr != temp.end<double>(); itr++ )
+//                    *itr = cvRound( (*itr - mean_val) / (3*stddev_val) );
+//            }
+//            else
+//                temp = Scalar::all(0);
+
+//            temp = 127*temp + 127;
+//            temp.convertTo( patch, CV_8UC1 );
+
+            vector<KeyPoint> kpts;
+            Mat bow;
+
+            detector->detect(patch, kpts);
+            bide.compute(patch, kpts, bow);
+
+            if (bow.cols != 0)
+                bowReturn+= bow;
+        }
+    }
+
+    return bowReturn;
+}
+
+/*
+generate FabMap bag-of-words data : an image descriptor for each frame
+*/
+int generateBOWImageDescsWafer(string dataPath,
+                          string bowImageDescPath,
+                          string vocabPath,
+                          Ptr<FeatureDetector> &detector,
+                          Ptr<DescriptorExtractor> &extractor,
+                          int minWords)
+{
+
+    FileStorage fs;
+
+    //ensure not overwriting training data
+    ifstream checker;
+    checker.open(bowImageDescPath.c_str());
+    if(checker.is_open()) {
+        cerr << bowImageDescPath << ": FabMap Training/Testing Data "
+                     "already present" << endl;
+        checker.close();
+        return -1;
+    }
+
+    //load vocabulary
+    cout << "Loading Vocabulary" << endl;
+    fs.open(vocabPath, FileStorage::READ);
+    Mat vocab;
+    fs["Vocabulary"] >> vocab;
+    if (vocab.empty()) {
+        cerr << vocabPath << ": Vocabulary not found" << endl;
+        return -1;
+    }
+    fs.release();
+
+    //use a FLANN matcher to generate bag-of-words representations
+    Ptr<DescriptorMatcher> matcher =
+            DescriptorMatcher::create("FlannBased");
+    BOWImgDescriptorExtractor bide(extractor, matcher);
+    bide.setVocabulary(vocab);
+
+    //load movie
+    VideoCapture movie;
+    movie.open(dataPath);
+
+    if(!movie.isOpened()) {
+        cerr << dataPath << ": movie not found" << endl;
+        return -1;
+    }
+
+    //extract image descriptors
+    Mat fabmapTrainData;
+    cout << "Extracting Bag-of-words Image Descriptors" << endl;
+    cout.setf(ios_base::fixed);
+    cout.precision(0);
+
+    ofstream maskw;
+
+    if(minWords) {
+        maskw.open(string(bowImageDescPath + "mask.txt").c_str());
+    }
+
+    Mat frame, bow;
+
+    while(movie.read(frame)) {
+        bow = generateBOW(frame, bide, detector);
+
+        if(minWords) {
+            //writing a mask file
+            if(countNonZero(bow) < minWords) {
+                //frame masked
+                maskw << "0" << endl;
+            } else {
+                //frame accepted
+                maskw << "1" << endl;
+                fabmapTrainData.push_back(bow);
+            }
+        } else {
+            fabmapTrainData.push_back(bow);
+        }
+
+        cout << 100.0 * (movie.get(CV_CAP_PROP_POS_FRAMES) /
+                              movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%    \r";
+        fflush(stdout);
+    }
+    cout << "Done                                       " << endl;
+
+    movie.release();
+
+    //save training data
+    fs.open(bowImageDescPath, FileStorage::WRITE);
+    fs << "BOWImageDescs" << fabmapTrainData;
+    fs.release();
+
+    return 0;
+}
 
 /*
 Run FabMap on a test dataset
 */
+
 int openFABMAP(string testPath,
                of2c::FabMap *fabmap,
                string vocabPath,
                string resultsPath,
                bool addNewOnly)
 {
-
     FileStorage fs;
 
     //ensure not overwriting results
@@ -613,11 +889,13 @@ int openFABMAP(string testPath,
     imwrite("results.bmp",confusion_mat);
 
     return 0;
+
 }
 
 /*
 Run FabMap on a test dataset
 */
+
 vector<of2c::IMatch> openFABMAP(Mat queryImageDescs,
                Mat testImageDescs,
                of2c::FabMap *fabmap)
@@ -1276,7 +1554,7 @@ void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat C
 
     Mat appended( getFrameFromFile(newImages, 0).rows,getFrameFromFile(newImages, 0).cols*2, getFrameFromFile(newImages, 0).type(), Scalar(0) );
 
-    uint sizeDataset = 180;//newImages.get(CV_CAP_PROP_FRAME_COUNT);
+    uint sizeDataset = 500;//loadDatasetVideo(newImages).get(CV_CAP_PROP_FRAME_COUNT);
     cout << sizeDataset << endl;
 
     for( uint x = 0; x < sizeDataset; x++ ) {
@@ -1536,6 +1814,11 @@ int RunFABMAP(FileStorage fs)
                                         fs["FilePaths"]["TrainFeatDesc"],
                                         detector, extractor);
 
+    } else if (function == "GenerateVocabTrainDataWafer") {
+        result = generateVocabTrainDataPatch(fs["FilePaths"]["TrainPath"],
+                                        fs["FilePaths"]["TrainFeatDesc"],
+                                        detector, extractor);
+
     } else if (function == "TrainVocabulary") {
         result = trainVocabulary(fs["FilePaths"]["Vocabulary"],
                                  fs["FilePaths"]["TrainFeatDesc"],
@@ -1543,6 +1826,12 @@ int RunFABMAP(FileStorage fs)
 
     } else if (function == "GenerateFABMAPTrainData") {
         result = generateBOWImageDescs(fs["FilePaths"]["TrainPath"],
+                                       fs["FilePaths"]["TrainImagDesc"],
+                                       fs["FilePaths"]["Vocabulary"], detector, extractor,
+                                       fs["BOWOptions"]["MinWords"]);
+
+    }else if (function == "GenerateFABMAPTrainDataWafer") {
+        result = generateBOWImageDescsWafer(fs["FilePaths"]["TrainPath"],
                                        fs["FilePaths"]["TrainImagDesc"],
                                        fs["FilePaths"]["Vocabulary"], detector, extractor,
                                        fs["BOWOptions"]["MinWords"]);
@@ -2265,7 +2554,7 @@ int main(int argc, const char * argv[])
     string settfilename;
     if (argc == 1) {
         //assume settings in working directory
-        settfilename = "settings.yml";
+        settfilename = "/home/schvarcz/Dissertacao/FABMap Results/Quebra/settings.yml";
     } else if (argc == 3) {
         if(string(argv[1]) != "-s") {
             //incorrect option
