@@ -47,6 +47,9 @@ if not os.path.exists(pathToSave):
 while (video.grab()):
     print "Frame ", frame
     b, img = video.retrieve()
-    imwrite("{0}/{1}{2:06d}.png".format(pathToSave,filePrefix,frame),img)
+    imgg = cvtColor(img,cv.CV_RGB2GRAY)
+    #imgg = pyrDown(imgg)
+    #imgg = equalizeHist(imgg)
+    imwrite("{0}/{1}{2:06d}.png".format(pathToSave,filePrefix,frame),imgg)
     frame += 1
 

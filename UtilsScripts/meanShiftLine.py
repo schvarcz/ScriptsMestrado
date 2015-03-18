@@ -193,7 +193,7 @@ def relaxLine(img,line):
         show(rectVB,line)
 
 
-def ransac(pts, model, iterations=100, sampleSize=3, threshold = 1.4, minInliers = 28):
+def ransac(pts, model, iterations=1000, sampleSize=3, threshold = 5, minInliers = 28):
     maxInliers = 0
     bestParams, bestInliers = None, None
     ptsA = asarray(pts)
@@ -254,8 +254,8 @@ class LSE(object):
         return zip(x,y)
 
 
-
-rectV = cv2.cvtColor(imgGlobal[145-maxWindowSize:145+30+maxWindowSize,15-maxWindowSize:15+30+maxWindowSize],cv2.cv.CV_RGB2GRAY).astype(float32)
+y ,x = 145, 15
+rectV = cv2.cvtColor(imgGlobal[y-maxWindowSize:y+30+maxWindowSize,x-maxWindowSize:x+30+maxWindowSize],cv2.cv.CV_RGB2GRAY).astype(float32)
 #plt.imshow(rectV)
 #plt.show()
 ma, mi = rectV.max(), rectV.min()
