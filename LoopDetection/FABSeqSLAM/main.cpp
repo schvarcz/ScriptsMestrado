@@ -282,10 +282,6 @@ int generateVocabTrainData(string trainPath,
         detector->detect(frame, kpts);
         cout << "Detected" << endl;
         extractor->compute(frame, kpts, descs);
-
-        cout << descs.row(0) << endl;
-        brief.compute(frame,kpts,descs);
-        cout << descs.row(0) << endl << endl << endl;
         cout << "Extracted" << endl;
 
         //add all descriptors to the training data
