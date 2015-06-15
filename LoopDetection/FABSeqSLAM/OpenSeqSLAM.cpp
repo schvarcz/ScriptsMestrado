@@ -344,30 +344,30 @@ Mat OpenSeqSLAM::findMatches( Mat& diff_mat, int matching_dist ) {
  * and the second row is the score (lower is better)
  */
 Mat OpenSeqSLAM::apply( vector<Mat>& set_1, vector<Mat>& set_2 ) {
-    cout << "Calculate Difference Matrix" << endl;
+    //cout << "Calculate Difference Matrix" << endl;
     Mat diff_mat = calcDifferenceMatrix( set_1, set_2 );
 
     /* Includes additional row on diff matrix with infinite values, to penalize out of bounds cases */
     Mat inf( 1, diff_mat.cols, diff_mat.type(), Scalar(std::numeric_limits<float>::max()) );
     vconcat( diff_mat, inf, diff_mat );
 
-    cout << "Enhance local Contrast" << endl;
+    //cout << "Enhance local Contrast" << endl;
     enhanced = enhanceLocalContrast( diff_mat );
 
-    cout << "Find Matches" << endl;
+    //cout << "Find Matches" << endl;
     return findMatches( enhanced );
 }
 Mat OpenSeqSLAM::apply( VideoCapture set_1, VideoCapture set_2 ) {
-    cout << "Calculate Difference Matrix" << endl;
+    //cout << "Calculate Difference Matrix" << endl;
     Mat diff_mat = calcDifferenceMatrix( set_1, set_2 );
 
     /* Includes additional row on diff matrix with infinite values, to penalize out of bounds cases */
     Mat inf( 1, diff_mat.cols, diff_mat.type(), Scalar(std::numeric_limits<float>::max()) );
     vconcat( diff_mat, inf, diff_mat );
 
-    cout << "Enhance local Contrast" << endl;
+    //cout << "Enhance local Contrast" << endl;
     enhanced = enhanceLocalContrast( diff_mat );
 
-    cout << "Find Matches" << endl;
+    //cout << "Find Matches" << endl;
     return findMatches( enhanced );
 }

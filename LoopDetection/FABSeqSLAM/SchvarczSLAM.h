@@ -39,6 +39,8 @@ public:
     Mat apply(VideoCapture QueryImages, VideoCapture TestImages);
     Mat calcDifferenceMatrix( vector<Mat>& QueryImages, vector<Mat>& TestImages );
     Mat calcDifferenceMatrix(VideoCapture &QueryImages, VideoCapture &TestImages);
+    float calcDistance(Mat queryDescs, BFMatcher matcher);
+    vector<Mat> getFeaturesDescs(VideoCapture &movie);
 
     pair<int, double> findMatch( Mat& diff_mat, int N, int matching_dist );
     Mat findMatches( Mat& diff_mat, int matching_dist = 10 );

@@ -77,12 +77,14 @@ Mat BOWMSCTrainer::cluster(const Mat& descriptors) const {
 	for (int i = 1; i < descriptors.rows; i++) {
 
         std::cout << "\r  Descriptors: " << i <<  "/" << descriptors.rows << "(" << 100.0*(float)i/descriptors.rows << "%)  Clusters: " << initialCentres.size();
+        std::cout << descriptors.row(i) << std::endl;
         fflush(stdout);
 		double minDist = DBL_MAX;
 		for (size_t j = 0; j < initialCentres.size(); j++) {
-			minDist = std::min(minDist,
-				cv::Mahalanobis(descriptors.row(i),initialCentres[j],
-				icovar));
+            std::cout << initialCentres[j] << std::endl;
+            minDist = std::min(minDist,
+                cv::Mahalanobis(descriptors.row(i),initialCentres[j],
+                icovar));
 		}
 		if (minDist > clusterSize)
 			initialCentres.push_back(descriptors.row(i));

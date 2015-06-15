@@ -46,36 +46,138 @@ Mat SchvaczSLAM::apply(VideoCapture QueryImages, VideoCapture TestImages)
 
 Mat SchvaczSLAM::calcDifferenceMatrix(vector<Mat> &QueryImages, vector<Mat> &TestImages)
 {
-    Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
-    Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
+    if (vocab.rows)
+    {
+        Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
+        Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
 
-    Mat occurrence  = BOWQuery * BOWTest.t();
+        Mat occurrence  = BOWQuery * BOWTest.t();
 
-    double mi, ma;
-    minMaxLoc(occurrence,&mi,&ma);
-    occurrence = (occurrence-mi)/(ma-mi);
+        double mi, ma;
+        minMaxLoc(occurrence,&mi,&ma);
+        occurrence = (occurrence-mi)/(ma-mi);
 
-    minMaxLoc(occurrence,&mi,&ma);
-    occurrence = -(occurrence - ma);
+        minMaxLoc(occurrence,&mi,&ma);
+        occurrence = -(occurrence - ma);
+        return occurrence;
+    }
+
+    Mat occurrence(QueryImages.size(), TestImages.size(),CV_32F);
+    for(int query=0; query<occurrence.rows; query++)
+    {
+//        for(int test=0; test<occurrence.cols; test++)
+//            occurrence.at<float>(query,test) = calcDistance(QueryImages.at(query), TestImages.at(test));
+
+    }
+
     return occurrence;
 }
 
 Mat SchvaczSLAM::calcDifferenceMatrix(VideoCapture &QueryImages, VideoCapture &TestImages)
 {
-    Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
-    Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
+    if (vocab.rows)
+    {
+        Mat BOWQuery = generateBOWImageDescs(QueryImages,BOWType);
+        Mat BOWTest = generateBOWImageDescs(TestImages,BOWType);
 
-    Mat occurrence  = BOWQuery * BOWTest.t();
+        Mat occurrence  = BOWQuery * BOWTest.t();
 
-    double mi, ma;
-    minMaxLoc(occurrence,&mi,&ma);
-    occurrence = (occurrence-mi)/(ma-mi);
+        double mi, ma;
+        minMaxLoc(occurrence,&mi,&ma);
+        occurrence = (occurrence-mi)/(ma-mi);
 
-    minMaxLoc(occurrence,&mi,&ma);
-    occurrence = -(occurrence - ma);
+        minMaxLoc(occurrence,&mi,&ma);
+        occurrence = -(occurrence - ma);
+        return occurrence;
+    }
+
+    vector<Mat> queryDescs = getFeaturesDescs(QueryImages);
+    vector<Mat> testDescs = getFeaturesDescs(TestImages);
+
+    vector<BFMatcher> testDescsMatchers;
+
+    for(int test=0; test<testDescs.size(); test++)
+    {
+        BFMatcher matcher(NORM_HAMMING,true);
+        cout << "\r " << 100.0*((float)test / testDescs.size()) << "%         " << test << " - " << testDescs.at(test).cols;
+        fflush(stdout);
+        if (testDescs.at(test).cols != 0)
+            matcher.add(testDescs.at(test));
+        testDescsMatchers.push_back(matcher);
+    }
+
+    Mat occurrence(queryDescs.size(), testDescs.size(),CV_32F);
+
+    cout << "Calculating the similarity matrix... " << endl;
+    for(int query=0; query<occurrence.rows; query++)
+    {
+        float queryPerct = 100.0*((float)query / occurrence.rows);
+        float maxDist = 0;
+        for(int test=0; test<occurrence.cols; test++)
+        {
+
+            cout << "\r " << queryPerct + 100.0*((float)test / (occurrence.cols*occurrence.rows)) << "%         " << testDescs.at(test).cols;
+            fflush(stdout);
+
+            float dist;
+
+            if (testDescs.at(test).cols != 0)
+                dist = calcDistance(queryDescs.at(query), testDescsMatchers.at(test));
+            else
+                dist = numeric_limits<float>::max();
+            //float dist = calcDistance(queryDescs.at(query), testDescs.at(test));
+            occurrence.at<float>(query,test) = dist;
+            if (dist != numeric_limits<float>::max())
+                maxDist = std::max(maxDist,dist);
+        }
+        for(int test=0; test<occurrence.cols; test++)
+            if (occurrence.at<float>(query,test) == numeric_limits<float>::max())
+                occurrence.at<float>(query,test) = maxDist;
+    }
+
     return occurrence;
 }
 
+
+float SchvaczSLAM::calcDistance(Mat queryDescs, BFMatcher matcher)
+{
+    if (queryDescs.cols == 0)
+    {
+        return numeric_limits<float>::max();
+    }
+
+    vector<DMatch> matches;
+    matcher.match(queryDescs,matches);
+    float totalDistance = 0.0f;
+    for(int i=0;i<matches.size(); i++)
+    {
+        DMatch match = matches[i];
+        totalDistance += match.distance;
+    }
+    return totalDistance;
+}
+
+vector<Mat> SchvaczSLAM::getFeaturesDescs(VideoCapture &movie)
+{
+    cout << "Extracting Descriptors... " << endl;
+    Mat frame;
+    vector<Mat> movieDescs;
+    while(movie.read(frame))
+    {
+        cout << "\r " << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
+                                     movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%         ";
+        fflush(stdout);
+
+
+        Mat descs;
+        vector<KeyPoint> kpts;
+        detector->detect(frame,kpts);
+        extractor->compute(frame,kpts,descs);
+        movieDescs.push_back(descs);
+    }
+    cout << endl;
+    return movieDescs;
+}
 
 Mat SchvaczSLAM::generateBOWImageDescs(VideoCapture movie, int BOW_TYPE)
 {
@@ -93,19 +195,19 @@ Mat SchvaczSLAM::generateBOWImageDescs(VideoCapture movie, int BOW_TYPE)
     bide.setVocabulary(vocab);
 
 
-    cout << "SchvarczSLAM: Extracting Bag-of-words Image Descriptors" << endl;
+    //cout << "SchvarczSLAM: Extracting Bag-of-words Image Descriptors" << endl;
 
     Mat frame;
     while (movie.read(frame)) {
 
-        cout << "\r " << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
-                                movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%         ";
+        //cout << "\r " << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
+        //                        movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%         ";
 
         generateBOWImageDescs(frame, schvarczSLAMTrainData, bide, BOW_TYPE);
 
-        fflush(stdout);
+        //fflush(stdout);
     }
-    cout << "Done" << endl;
+    //cout << "Done" << endl;
 
     return schvarczSLAMTrainData;
 }
@@ -213,7 +315,7 @@ Mat SchvaczSLAM::generateBOWImageDescs(Mat frame, Mat &schvarczSLAMTrainData, BO
         schvarczSLAMTrainData.push_back(bow2);
     }
 
-    cout <<  kpts.size() << " keypoints detected... " << "     ";
+    //cout <<  kpts.size() << " keypoints detected... " << "     ";
 
 
     return schvarczSLAMTrainData;

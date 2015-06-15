@@ -12,7 +12,9 @@ SOURCES += main.cpp \
     SchvarczSLAM.cpp \
     lse.cpp \
     ransac.cpp \
-    outdoorslam.cpp
+    outdoorslam.cpp \
+    bowhamtrainer.cpp \
+    seqdescriptor.cpp
 
 HEADERS += \
     OpenSeqSLAM.h \
@@ -21,7 +23,9 @@ HEADERS += \
     SchvarczSLAM.h \
     lse.h \
     ransac.h \
-    outdoorslam.h
+    outdoorslam.h \
+    bowhamtrainer.h \
+    seqdescriptor.h
 
 
 

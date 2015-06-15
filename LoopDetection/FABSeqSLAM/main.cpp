@@ -20,6 +20,7 @@
 #include "SchvarczSLAM.h"
 #include "lse.h"
 #include "ransac.h"
+#include "bowhamtrainer.h"
 
 #ifndef CLOCKS_PER_SECOND
 #define CLOCKS_PER_SECOND 1000000.0
@@ -36,7 +37,8 @@ int generateVocabTrainData(string trainPath,
                            string vocabTrainDataPath,
                            Ptr<FeatureDetector> &detector,
                            Ptr<DescriptorExtractor> &extractor);
-int trainVocabulary(string vocabPath,
+int trainVocabulary(string BOWTrainerType,
+                    string vocabPath,
                     string vocabTrainDataPath,
                     double clusterRadius);
 
@@ -109,7 +111,7 @@ int showFeatures(string trainPath, Ptr<FeatureDetector> &detector)
         sprintf(name,"/home/schvarcz/Desktop/features/I_%06d.png",frameId);
         imwrite(name, kptsImg);
         frameId++;
-        if(waitKey(5) == 27) {
+        if(waitKey(100) == 27) {
             break;
         }
     }
@@ -269,6 +271,7 @@ int generateVocabTrainData(string trainPath,
     Mat frame, descs, feats;
     vector<KeyPoint> kpts;
 
+    BriefDescriptorExtractor brief;
 
     cout.setf(ios_base::fixed);
     cout.precision(0);
@@ -279,6 +282,10 @@ int generateVocabTrainData(string trainPath,
         detector->detect(frame, kpts);
         cout << "Detected" << endl;
         extractor->compute(frame, kpts, descs);
+
+        cout << descs.row(0) << endl;
+        brief.compute(frame,kpts,descs);
+        cout << descs.row(0) << endl << endl << endl;
         cout << "Extracted" << endl;
 
         //add all descriptors to the training data
@@ -315,7 +322,8 @@ int generateVocabTrainData(string trainPath,
 /*
 use training data to build a codebook/vocabulary
 */
-int trainVocabulary(string vocabPath,
+int trainVocabulary(string BOWTrainerType,
+                    string vocabPath,
                     string vocabTrainDataPath,
                     double clusterRadius)
 {
@@ -348,9 +356,14 @@ int trainVocabulary(string vocabPath,
     cout << "Performing clustering" << endl;
 
     //uses Modified Sequential Clustering to train a vocabulary
-    of2c::BOWMSCTrainer trainer(clusterRadius);
-    trainer.add(vocabTrainData);
-    Mat vocab = trainer.cluster();
+    BOWTrainer *trainer;
+    if (BOWTrainerType == "Mahalanobis")
+        trainer = new of2c::BOWMSCTrainer(clusterRadius);
+    else if (BOWTrainerType == "Hamming")
+        trainer = new BOWHAMTrainer(clusterRadius);
+
+    trainer->add(vocabTrainData);
+    Mat vocab = trainer->cluster();
 
     //save the vocabulary
     cout << "Saving vocabulary" << endl;
@@ -1059,6 +1072,31 @@ Ptr<FeatureDetector> generateDetector(FileStorage &fs) {
                         fs["FeatureOptions"]["MSERDetector"]["MinMargin"],
                         fs["FeatureOptions"]["MSERDetector"]["EdgeBlurSize"]);
 
+        } else if (detectorType == "ORB") {
+            int scoreType = ORB::HARRIS_SCORE;
+            string ScoreType = fs["FeatureOptions"]["OrbDetector"]["ScoreType"];
+            if (ScoreType == "HARRIS")
+            {
+                scoreType = ORB::HARRIS_SCORE;
+            }
+            else if (ScoreType == "FAST")
+            {
+                scoreType = ORB::FAST_SCORE;
+            }
+
+            detector = new ORB((int)fs["FeatureOptions"]["OrbDetector"]["NumFeatures"],
+                                (float)fs["FeatureOptions"]["OrbDetector"]["ScaleFactor"],
+                                (int)fs["FeatureOptions"]["OrbDetector"]["NumLevels"],
+                                (int)fs["FeatureOptions"]["OrbDetector"]["EdgeThreshold"],
+                                (int)fs["FeatureOptions"]["OrbDetector"]["FirstLevel"],
+                                (int)fs["FeatureOptions"]["OrbDetector"]["WTAK"],
+                                scoreType,
+                                (int)fs["FeatureOptions"]["OrbDetector"]["PatchSize"]);
+        } else if (detectorType == "BRISK") {
+            detector = new BRISK(
+                        (int)fs["FeatureOptions"]["BriskDetector"]["Threshold"],
+                        (int)fs["FeatureOptions"]["BriskDetector"]["Octaves"],
+                        (float)fs["FeatureOptions"]["BriskDetector"]["PatternScale"]);
         } else {
             cerr << "Could not create detector class. Specify detector "
                          "options in the settings file" << endl;
@@ -1109,6 +1147,39 @@ Ptr<DescriptorExtractor> generateExtractor(FileStorage &fs)
                     (int)fs["FeatureOptions"]["SurfDetector"]["Upright"] > 0);
 #endif
 
+    } else if (extractorType == "BRIEF") {
+        extractor = new BriefDescriptorExtractor((int)fs["FeatureOptions"]["BriefExtractor"]["Bytes"]);
+    } else if (extractorType == "BRISK") {
+        extractor = new BRISK(
+                    (int)fs["FeatureOptions"]["BriskDetector"]["Threshold"],
+                    (int)fs["FeatureOptions"]["BriskDetector"]["Octaves"],
+                    (float)fs["FeatureOptions"]["BriskDetector"]["PatternScale"]);
+    } else if (extractorType == "ORB") {
+        int scoreType = ORB::HARRIS_SCORE;
+        string ScoreType = fs["FeatureOptions"]["OrbDetector"]["ScoreType"];
+        if (ScoreType == "HARRIS")
+        {
+            scoreType = ORB::HARRIS_SCORE;
+        }
+        else if (ScoreType == "FAST")
+        {
+            scoreType = ORB::FAST_SCORE;
+        }
+
+        extractor = new ORB((int)fs["FeatureOptions"]["OrbDetector"]["NumFeatures"],
+                            (float)fs["FeatureOptions"]["OrbDetector"]["ScaleFactor"],
+                            (int)fs["FeatureOptions"]["OrbDetector"]["NumLevels"],
+                            (int)fs["FeatureOptions"]["OrbDetector"]["EdgeThreshold"],
+                            (int)fs["FeatureOptions"]["OrbDetector"]["FirstLevel"],
+                            (int)fs["FeatureOptions"]["OrbDetector"]["WTAK"],
+                            scoreType,
+                            (int)fs["FeatureOptions"]["OrbDetector"]["PatchSize"]);
+    } else if (extractorType == "FREAK") {
+        extractor = new FREAK(
+                    (string)fs["FeatureOptions"]["FreakExtractor"]["OrientationNormalized"] == "True",
+                    (string)fs["FeatureOptions"]["FreakExtractor"]["ScaleNormalized"] == "True",
+                    (float)fs["FeatureOptions"]["FreakExtractor"]["PatternScale"],
+                    (int)fs["FeatureOptions"]["FreakExtractor"]["NumOctaves"]);
     } else {
         cerr << "Could not create Descriptor Extractor. Please specify "
                      "extractor type in settings file" << endl;
@@ -1413,13 +1484,13 @@ vector<Mat> loadDatasetFromVideo( string path ) {
         return images;
     }
 
-    cout << "Loading video: " << path << endl;
+    //cout << "Loading video: " << path << endl;
     Mat frame;
 
     while (movie.read(frame)) {
 
-        cout << "\r " << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
-                                movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%         ";
+        //cout << "\r " << 100.0*(movie.get(CV_CAP_PROP_POS_FRAMES) /
+        //                        movie.get(CV_CAP_PROP_FRAME_COUNT)) << "%         ";
         fflush(stdout);
 
         Mat save;
@@ -1427,7 +1498,7 @@ vector<Mat> loadDatasetFromVideo( string path ) {
         //cvtColor(frame,save,CV_RGB2GRAY);
         images.push_back( save );
     }
-    cout << "Done" << endl;
+    //cout << "Done" << endl;
 
     return images;
 }
@@ -1441,7 +1512,7 @@ VideoCapture loadDatasetVideo( string path ) {
         return movie;
     }
 
-    cout << "Loading video: " << path << endl;
+    //cout << "Loading video: " << path << endl;
     return movie;
 }
 
@@ -1505,9 +1576,9 @@ void showLoopsDetections(Mat matches, vector<Mat> newImages, vector<Mat> oldImag
             imwrite(name,appended);
         }
 
-        imshow( "", appended );
-        imshow("matches", CorrespondenceImage);
-        waitKey(500);
+        //imshow( "", appended );
+        //imshow("matches", CorrespondenceImage);
+        //waitKey(500);
         fflush(stdout);
     }
     sprintf( name, "%s/matches.png", ResultsPath.c_str());
@@ -1554,12 +1625,12 @@ void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat C
 
     Mat appended( getFrameFromFile(newImages, 0).rows,getFrameFromFile(newImages, 0).cols*2, getFrameFromFile(newImages, 0).type(), Scalar(0) );
 
-    uint sizeDataset = 500;//loadDatasetVideo(newImages).get(CV_CAP_PROP_FRAME_COUNT);
-    cout << sizeDataset << endl;
+    uint sizeDataset = loadDatasetVideo(newImages).get(CV_CAP_PROP_FRAME_COUNT);
+    //cout << sizeDataset << endl;
 
     for( uint x = 0; x < sizeDataset; x++ ) {
 
-        cout << "\r Image " << x << "/" << sizeDataset << " (" << 100.0*float(x)/sizeDataset<< "%)      ";
+        cout << "\r Image " << x << "/" << sizeDataset << " (" << 100.0*float(x)/sizeDataset<< "%),  ";
 
         int index = static_cast<int>(index_ptr[x]);
 
@@ -1589,17 +1660,17 @@ void showLoopsDetections(Mat matches, string newImages,  string oldImages, Mat C
         addText( appended, temp, Point( 10, 20 ), font );
 
 
-        cout << static_cast<float>(score_ptr[x]) << " - " << threshold << endl;
+        cout << static_cast<float>(score_ptr[x]) << ", " << threshold << endl;
         if( score_ptr[x] < threshold )
         {
             sprintf( name, "%s/I_new_%06d_old_%06d_%.3f.png", ResultsPath.c_str(), x, index, score_ptr[x] );
             imwrite(name,appended);
         }
 
-        imshow( "", appended );
-        imshow("matches", CorrespondenceImage);
-        waitKey(500);
-        fflush(stdout);
+        //imshow( "", appended );
+        //imshow("matches", CorrespondenceImage);
+        //waitKey(500);
+        //fflush(stdout);
     }
     sprintf( name, "%s/matches.png", ResultsPath.c_str());
     imwrite(name,CorrespondenceImage);
@@ -1631,15 +1702,15 @@ void RunSeqSLAM(FileStorage fs)
     /* Find the matches */
     const clock_t begin_time = clock();
     Mat matches = seq_slam.apply( preprocessed_new, preprocessed_old );
-//    Mat matches = seq_slam.apply( newImages, oldImages );
-    cout << "SeqSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
+    //Mat matches = seq_slam.apply( newImages, oldImages );
+    //cout << "SeqSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
     Mat CorrespondenceImage = seq_slam.getCorrespondenceMatrix();
 
     double mi, ma;
     minMaxLoc(CorrespondenceImage,&mi,&ma);
     imwrite(CorrespondenceImageResults,255*(CorrespondenceImage-mi)/(ma-mi));
 
-    cout << "Show results" << endl;
+    //cout << "Show results" << endl;
     showLoopsDetections(matches, QueryPath, TestPath, CorrespondenceImage, ResultsPath, threshold);
 }
 
@@ -1697,6 +1768,7 @@ int RunFABMapSeqSLAM(FileStorage fs)
     string TestPath = fs["FilePaths"]["TestPath"],
             QueryPath = fs["FilePaths"]["QueryPath"],
             ResultsPath = fs["SchvarczSLAM"]["ResultsPath"],
+            SimilarityMatrixMode = fs["SchvarczSLAM"]["SimilarityMatrixMode"],
             CorrespondenceImageResults= fs["FilePaths"]["CorrespondenceImageResults"],
             vocabPath = fs["FilePaths"]["Vocabulary"],
             bowIDFWeightsPath = fs["FilePaths"]["IDFWeights"];
@@ -1718,46 +1790,55 @@ int RunFABMapSeqSLAM(FileStorage fs)
         return -1;
     }
 
-    int BOWType = generatorBOWType(fs["SchvarczSLAM"]["BOWType"]);
-
-    //load vocabulary
-    cout << "Loading Vocabulary" << endl;
-    fs.open(vocabPath, FileStorage::READ);
-    Mat vocab;
-    fs["Vocabulary"] >> vocab;
-    if (vocab.empty()) {
-        cerr << vocabPath << ": Vocabulary not found" << endl;
-        return -1;
-    }
-    fs.release();
-
-
-    //load vocabulary
-    cout << "Loading BOWIDFWeights" << endl;
-    fs.open(bowIDFWeightsPath, FileStorage::READ);
-    Mat bowIDFWeights;
-    fs["BOWIDFWeights"] >> bowIDFWeights;
-    if (bowIDFWeights.empty()) {
-        cerr << bowIDFWeightsPath << ": BOWIDFWeights not found" << endl;
-        return -1;
-    }
-    fs.release();
-
     //vector<Mat> newImages = loadDatasetFromVideo( QueryPath );
     //vector<Mat> oldImages = loadDatasetFromVideo( TestPath );
     VideoCapture newImages = loadDatasetVideo( QueryPath );
     VideoCapture oldImages = loadDatasetVideo( TestPath );
 
-    SchvaczSLAM schvarczSlam(detector,extractor,vocab,bowIDFWeights.t());
-    schvarczSlam.setBOWType(BOWType);
-    schvarczSlam.RWindow = RWindow;
-    schvarczSlam.maxVar = maxVar;
-    schvarczSlam.maxHalfWindowMeanShiftSize = maxHalfWindowMeanShiftSize;
+    SchvaczSLAM *schvarczSlam;
+    if (SimilarityMatrixMode == "BOW")
+    {
+        int BOWType = generatorBOWType(fs["SchvarczSLAM"]["BOWType"]);
+
+        //load vocabulary
+        //cout << "Loading Vocabulary" << endl;
+        fs.open(vocabPath, FileStorage::READ);
+        Mat vocab;
+        fs["Vocabulary"] >> vocab;
+        if (vocab.empty()) {
+            cerr << vocabPath << ": Vocabulary not found" << endl;
+            return -1;
+        }
+        fs.release();
+
+
+        //load vocabulary
+        //cout << "Loading BOWIDFWeights" << endl;
+        fs.open(bowIDFWeightsPath, FileStorage::READ);
+        Mat bowIDFWeights;
+        fs["BOWIDFWeights"] >> bowIDFWeights;
+        if (bowIDFWeights.empty()) {
+            cerr << bowIDFWeightsPath << ": BOWIDFWeights not found" << endl;
+            return -1;
+        }
+        fs.release();
+
+
+        schvarczSlam = new SchvaczSLAM(detector,extractor,vocab,bowIDFWeights.t());
+        schvarczSlam->setBOWType(BOWType);
+    }
+    else if (SimilarityMatrixMode == "FeaturesMatching")
+    {
+        schvarczSlam = new SchvaczSLAM(detector,extractor);
+    }
+    schvarczSlam->RWindow = RWindow;
+    schvarczSlam->maxVar = maxVar;
+    schvarczSlam->maxHalfWindowMeanShiftSize = maxHalfWindowMeanShiftSize;
 
     const clock_t begin_time = clock();
-    Mat matches = schvarczSlam.apply(newImages,oldImages);
-    cout << "SchvarczSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
-    Mat CorrespondenceImage = schvarczSlam.getCorrespondenceMatrix();
+    Mat matches = schvarczSlam->apply(newImages,oldImages);
+    //cout << "SchvarczSLAM Total time: " << ((clock()- begin_time)/CLOCKS_PER_SECOND);
+    Mat CorrespondenceImage = schvarczSlam->getCorrespondenceMatrix();
 
     double mi, ma;
     minMaxLoc(CorrespondenceImage,&mi,&ma);
@@ -1820,7 +1901,8 @@ int RunFABMAP(FileStorage fs)
                                         detector, extractor);
 
     } else if (function == "TrainVocabulary") {
-        result = trainVocabulary(fs["FilePaths"]["Vocabulary"],
+        result = trainVocabulary(fs["VocabTrainOptions"]["BOWTrainerType"],
+                                 fs["FilePaths"]["Vocabulary"],
                                  fs["FilePaths"]["TrainFeatDesc"],
                                  fs["VocabTrainOptions"]["ClusterSize"]);
 
@@ -1927,7 +2009,8 @@ int RunFABMAPFull(FileStorage fs)
                                     fs["FilePaths"]["TrainFeatDesc"],
                                     detector, extractor);
 
-    result += trainVocabulary(fs["FilePaths"]["Vocabulary"],
+    result += trainVocabulary(fs["VocabTrainOptions"]["BOWTrainerType"],
+                              fs["FilePaths"]["Vocabulary"],
                              fs["FilePaths"]["TrainFeatDesc"],
                              fs["VocabTrainOptions"]["ClusterSize"]);
 
@@ -2554,7 +2637,7 @@ int main(int argc, const char * argv[])
     string settfilename;
     if (argc == 1) {
         //assume settings in working directory
-        settfilename = "/home/schvarcz/Dissertacao/FABMap Results/Quebra/settings.yml";
+        settfilename = "settings.yml";
     } else if (argc == 3) {
         if(string(argv[1]) != "-s") {
             //incorrect option
