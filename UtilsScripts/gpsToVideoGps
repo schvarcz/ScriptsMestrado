@@ -1,0 +1,83 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+from cv2 import *
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import subplots,cm
+from matplotlib.gridspec import GridSpec
+import numpy as np, os, sys, csv
+
+def showHelp():
+    print """
+Convert a video to images
+
+    $ gpsToVideoGps videoToProcess gpsFile outputGPSImageFile
+
+          """
+    sys.exit()
+
+
+def gpsPos(time,gpsLines):
+    idx = 0
+    while(gpsLines[idx][0]<time):
+        idx += 1
+    perct = (time-gpsLines[idx-1][0])/(gpsLines[idx][0]-gpsLines[idx-1][0])
+    return [perct*(gpsLines[idx][i]-gpsLines[idx-1][i]) + gpsLines[idx-1][i] for i in range(2,7)]
+
+
+
+if len(sys.argv) < 3:
+    showHelp()
+
+videoFile = os.path.expanduser(sys.argv[1])
+
+if len(sys.argv) > 2:
+    gpsFile = os.path.expanduser(sys.argv[2])
+
+if len(sys.argv) > 3:
+    outputGPSImageFile = os.path.expanduser(sys.argv[3])
+
+frame = 0
+
+print "Video file: ", videoFile
+print "GPS File: ", gpsFile
+print "GPS-Image Output File: ", outputGPSImageFile
+
+lines = [[float(c) for c in l] for l in csv.reader(open(gpsFile),delimiter=";")]
+inicial = list(lines[0])
+outLines = []
+
+for i in range(len(lines)):
+    lines[i][0] -= inicial[0]
+
+video = VideoCapture(videoFile)
+nFrames = float(video.get(cv.CV_CAP_PROP_FRAME_COUNT))
+fps = 24.0 #float(video.get(cv.CV_CAP_PROP_FPS))  
+txFrame = 1./fps*10**(9)
+
+for i in range(int(nFrames)):
+    outLines.append(["I_{0:06}.png".format(int(round(lines[i][0]/txFrame)))] + gpsPos(txFrame*i,lines))
+    
+
+x,y = zip(*[gpsPos(txFrame*i,lines) for i in range(int(nFrames))])
+_,_,xx,yy,_,_, _ = zip(*lines)
+plt.plot(x,y)
+plt.plot(xx,yy)
+plt.show()
+
+# para cada frame
+    #calcular a posicao gps dele.
+
+for i in range(len(lines)):
+    outLines[i] = ["I_{0:06}.png".format(int(round(lines[i][0]/txFrame)))] + outLines[i]
+
+
+csv.writer(open(outputGPSImageFile,"w"),delimiter=";").writerows(outLines)
+#while (video.grab()):
+#    print "Frame ", frame
+#    b, img = video.retrieve()
+#    imgg = cvtColor(img,cv.CV_RGB2GRAY)
+#    #imgg = pyrDown(imgg)
+#    #imgg = equalizeHist(imgg)
+#    imwrite("{0}/{1}{2:06d}.png".format(pathToSave,filePrefix,frame),imgg)
+#    frame += 1
+

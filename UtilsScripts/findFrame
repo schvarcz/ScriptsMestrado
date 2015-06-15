@@ -1,0 +1,47 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+from cv2 import *
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import subplots,cm
+from matplotlib.gridspec import GridSpec
+import numpy as np, os, sys
+
+def showHelp():
+    print """
+
+    $ findFrame videoToProcess frameToFind
+
+          """
+    sys.exit()
+
+
+if len(sys.argv) < 2:
+    showHelp()
+
+videoFile = os.path.expanduser(sys.argv[1])
+
+if len(sys.argv) > 2:
+    frameToFind = os.path.expanduser(sys.argv[2])
+
+
+frame = 0
+
+print "Video file: ", videoFile
+print "Frame to find: ", frameToFind
+
+frameToFind = cvtColor(imread(frameToFind),cv.CV_RGB2GRAY)
+video = VideoCapture(videoFile)
+
+while (video.grab()):
+    print "Frame ", frame
+    b, img = video.retrieve()
+    
+    imgg = cvtColor(img,cv.CV_RGB2GRAY)
+    imgg = pyrDown(imgg)
+    imgg = equalizeHist(imgg)
+    s = (imgg - frameToFind).sum()
+    if s==0:
+        print "Found ", frame
+        sys.exit()
+    frame += 1
+

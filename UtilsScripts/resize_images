@@ -2,5 +2,5 @@
 
 for f in * ; 
 do
-    convert $f -resize 64x36 -crop +0-4 $f
+    convert $f -resize 1478x768 -crop 1366x768+56+0 $f
 done

@@ -1,7 +1,7 @@
 #!/bin/bash
 folder=~/Dissertacao/datasets
-src_folder=$folder/motox/VID_20140617_162058756/
-dst_folder=$folder/motox/VID_20140617_162058756_ESCOLHA/
+src_folder=$folder/motox/orto25.11.2014/protasio/
+dst_folder=$folder/motox/orto25.11.2014/protasio_selected/
 
 
 #rm $folder/motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2/* -r
@@ -39,7 +39,7 @@ mkdir $dst_folder &>  /dev/null
 #for i in `seq 17040 7 17100 `; do #região 1nd corredor novamente
 #for i in `seq 17100 15 18435 `; do #região 1nd corredor novamente
 #for i in `seq 18435 5 18500 `; do #região 1nd corredor novamente
-for i in `seq 18500 15 18814 `; do #região 1nd corredor novamente
+for i in `seq 0 20 7110 `; do #região 1nd corredor novamente
 
 #for i in `seq 0 7 12580 `; do #região 1nd corredor novamente
     cp $src_folder`printf "I_%06d.png" $i` $dst_folder`printf "I_%06d.png" $i`

@@ -1,0 +1,10 @@
+#!/usr/bin/python
+
+import sys
+
+path = sys.argv[1]
+
+lines = [l.replace("\r","") for l in open(path).readlines()]
+
+open(path,"w").writelines(lines)
+

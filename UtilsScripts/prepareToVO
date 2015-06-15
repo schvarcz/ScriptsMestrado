@@ -46,7 +46,7 @@ for frame in sorted(os.listdir(pathOrigin)):
 
     imgg = cvtColor(img,cv.CV_RGB2GRAY)
     imgg = equalizeHist(imgg)
-    imgg = pyrDown(imgg)
+    #imgg = pyrDown(imgg)
 
     imwrite("{0}/{1}.png".format(pathSave,".".join(frame.split(".")[:-1])),imgg)
 

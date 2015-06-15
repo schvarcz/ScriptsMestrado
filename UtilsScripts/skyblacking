@@ -1,0 +1,128 @@
+#!/usr/bin/python
+# -*- coding:utf8 -*-
+
+import cv2, sys, os, numpy as np
+from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+
+def showHelp():
+    print """
+Remove the sky from the source video
+
+    $ skyblacking sourceVideo [folderToSave]
+
+          """
+    sys.exit()
+
+
+def otsu(img):
+    hist = np.histogram(img,255)
+    lvs, bins = hist
+    bins = [(bins[i]+bins[i+1])/2 for i in range(len(bins)-1)]
+    n = lvs.sum()
+    p = lvs.astype("float")/n
+    ut = (p*bins).sum()
+    maxv, maxt = float("-inf"),float("-inf")
+    for t in range(1,len(lvs)-1):
+        lvs[0:t], lvs[t:]
+        bins[0:t], bins[t:]
+        p1, p2 = p[0:t],p[t:]
+        w1, w2 = p1.sum(),p2.sum()
+        u1, u2 = (p1*bins[0:t]).sum()/w1, (p2*bins[t:]).sum()/w2
+        #v = w1*((u1-ut)**2) + w2*((u2-ut)**2) #otsu
+        v = w1*(u1**2) + w2*(u2**2) #Liao
+        if maxv < v:
+            maxv, maxt = v, t
+    return bins[maxt]
+
+
+def otsuValley(img):
+    hist = np.histogram(img,255)
+    lvs, bins = hist
+    bins = [(bins[i]+bins[i+1])/2 for i in range(len(bins)-1)]
+    n = lvs.sum()
+    p = lvs.astype("float")/n
+    ut = (p*bins).sum()
+    maxv, maxt = float("-inf"),float("-inf")
+    for t in range(1,len(lvs)-1):
+        p1, p2 = p[0:t],p[t:]
+        w1, w2 = p1.sum(),p2.sum()
+        u1, u2 = (p1*bins[0:t]).sum()/w1, (p2*bins[t:]).sum()/w2
+        #v = w1*((u1-ut)**2) + w2*((u2-ut)**2) #otsu
+        v = (w1*(u1**2) + w2*(u2**2))*(1-p[t]) #Liao
+        if maxv < v:
+            maxv, maxt = v, t
+    return bins[maxt]
+
+
+def removeSky(frame, thresholdMethod):
+    b,g,r = cv2.split(frame)
+    c = -1.16*r + 0.363*g + 1.43*b - 82.3
+    ret = c.copy()
+    mi, ma = c.min(), c.max()
+    c = 255*(c-mi)/(ma - mi)
+    c = c.astype("uint8")
+    return ret, cv2.threshold(c,thresholdMethod(c),255,cv2.THRESH_BINARY)[1]
+
+
+if __name__ == "__main__":
+
+    if len(sys.argv) < 2:
+        showHelp()
+
+    sourceVideo = os.path.expanduser(sys.argv[1])
+
+    folderToSave = None
+    if len(sys.argv) == 3:
+        folderToSave = os.path.expanduser(sys.argv[2])
+
+    video = cv2.VideoCapture(sourceVideo)
+
+    plt.ion()
+    fig, axes = plt.subplots(2,2)
+
+    idx=0
+    while(video.grab()):
+        fig.clear()
+        axes = fig.add_subplot(231), fig.add_subplot(232), fig.add_subplot(233), fig.add_subplot(233), fig.add_subplot(212)
+        flag, frame = video.retrieve()
+        if flag:
+            c, frameNoSky = removeSky(frame,otsuValley)
+            original = frame.copy()
+            frame = cv2.cvtColor(frame,cv2.cv.CV_RGB2GRAY)
+            frame[frameNoSky==255]=0
+
+            t1 = otsu(c)
+            t2 = otsuValley(c)
+            lvs, bins = np.histogram(c,255)
+            bins = [(bins[i]+bins[i+1])/2 for i in range(len(bins)-1)]
+
+
+            axes[0].imshow(original)
+
+            im1 = axes[1].imshow(c)
+            divider1 = make_axes_locatable(axes[1])
+            cax1 = divider1.append_axes("bottom", size="10%", pad=0.25)
+            fig.colorbar(im1,cax=cax1, orientation='horizontal')
+
+            axes[3].imshow(frame,cmap=plt.cm.gray)
+
+            axes[4].plot(bins,lvs)
+            axes[4].plot([t1,t1],[0,lvs.max()],label="OTSU Threshold")
+            axes[4].plot([t2,t2],[0,lvs.max()],label="OTSU Valley Threshold")
+
+            axes[4].legend()
+
+            fig.canvas.draw()
+            if folderToSave != None:
+                fig.savefig(folderToSave+"/I_{0:06}.png".format(idx))
+            fig.canvas.get_tk_widget().update()
+            idx += 1
+        else:
+            print "ops.... não capturando nada..."
+
+    cv2.destroyAllWindows()
+    plt.close()
+
+
