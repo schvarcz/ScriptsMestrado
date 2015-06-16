@@ -76,13 +76,13 @@ def plotPrecisionRecall(data):
     plt.xlim(0,1.2)
     plt.ylim(0,1.2)
     plt.legend()
-    plt.title("SAFE x SeqSLAM")
+    plt.title("SafeSLAM")
     plt.xlabel("Recall")
     plt.ylabel("Precision")
 
 
 groundTruth = file("groundTruth.txt","r").readlines()
-groundTruth = asarray([ [int(m) for m in g.split(" - ")] for g in groundTruth])
+groundTruth = asarray([ [int(m) for m in g.split("-")] for g in groundTruth])
 
 #SeqSLAM_data, SeqSLAM_threshold = openData("SeqSLAM/data")
 #SchvarczSLAM_data, SchvarczSLAM_threshold = openData("SchvarczSLAM/tfidf_norm/data")
@@ -98,62 +98,62 @@ groundTruth = asarray([ [int(m) for m in g.split(" - ")] for g in groundTruth])
 
 dataPlot = []
 pathList = [
-              "SeqSLAM/RW_5/",
-              "SeqSLAM/RW_10/",
-              "SeqSLAM/RW_15/",
-              "SeqSLAM/RW_20/",
+#              "SeqSLAM/RW_5/",
+#              "SeqSLAM/RW_10/",
+#              "SeqSLAM/RW_15/",
+#              "SeqSLAM/RW_20/",
 
-#             'SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5',
-#             'SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_10',
+             'SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5',
+             'SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_10',
              'SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_15',
              'SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_20',
-#             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_5',
-#             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_10',
-#             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_15',
-#             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_20',
-#             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_5',
-#             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_10',
-#             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_15',
-#             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_20',
+             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_5',
+             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_10',
+             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_15',
+             'SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_20',
+             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_5',
+             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_10',
+             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_15',
+             'SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_20',
 
-#             'SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_5',
-#             'SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_10',
+             'SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_5',
+             'SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_10',
              'SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_15',
              'SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_20',
-#             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_5',
-#             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_10',
-#             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_15',
-#             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_20',
-#             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_5',
-#             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_10',
-#             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_15',
-#             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_20',
+             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_5',
+             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_10',
+             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_15',
+             'SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_20',
+             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_5',
+             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_10',
+             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_15',
+             'SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_20',
 
-#             'SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_5',
-#             'SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_10',
+             'SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_5',
+             'SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_10',
              'SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_15',
              'SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_20',
-#             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_5',
-#             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_10',
-#             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_15',
-#             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_20',
-#             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_5',
-#             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_10',
-#             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_15',
-#             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_20',
+             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_5',
+             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_10',
+             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_15',
+             'SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_20',
+             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_5',
+             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_10',
+             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_15',
+             'SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_20',
 
-#             'SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_5',
-#             'SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_10',
+             'SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_5',
+             'SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_10',
              'SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_15',
              'SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_20',
-#             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_5',
-#             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_10',
-#             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_15',
-#             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_20',
-#             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_5',
-#             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_10',
-#             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_15',
-#             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_20',
+             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_5',
+             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_10',
+             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_15',
+             'SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_20',
+             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_5',
+             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_10',
+             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_15',
+             'SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_20',
     ]
 
 for path in pathList:

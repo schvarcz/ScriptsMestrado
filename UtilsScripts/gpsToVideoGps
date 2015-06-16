@@ -2,15 +2,13 @@
 # -*- coding: utf8 -*-
 from cv2 import *
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import subplots,cm
-from matplotlib.gridspec import GridSpec
 import numpy as np, os, sys, csv
 
 def showHelp():
     print """
 Convert a video to images
 
-    $ gpsToVideoGps videoToProcess gpsFile outputGPSImageFile
+    $ gpsToVideoGps videoToProcess gpsFile outputGPSImageFile [framesRepair]
 
           """
     sys.exit()
@@ -35,6 +33,8 @@ if len(sys.argv) > 2:
 
 if len(sys.argv) > 3:
     outputGPSImageFile = os.path.expanduser(sys.argv[3])
+if len(sys.argv) > 4:
+    framesRepair = int(sys.argv[4])
 
 frame = 0
 
@@ -44,8 +44,6 @@ print "GPS-Image Output File: ", outputGPSImageFile
 
 lines = [[float(c) for c in l] for l in csv.reader(open(gpsFile),delimiter=";")]
 inicial = list(lines[0])
-outLines = []
-
 for i in range(len(lines)):
     lines[i][0] -= inicial[0]
 
@@ -54,30 +52,29 @@ nFrames = float(video.get(cv.CV_CAP_PROP_FRAME_COUNT))
 fps = 24.0 #float(video.get(cv.CV_CAP_PROP_FPS))  
 txFrame = 1./fps*10**(9)
 
-for i in range(int(nFrames)):
-    outLines.append(["I_{0:06}.png".format(int(round(lines[i][0]/txFrame)))] + gpsPos(txFrame*i,lines))
-    
+start = 0
+if framesRepair < 0: #desconsiderar alguns frames
+    start = -framesRepair
+else:#ignorar gpsdata
+    timeToIgnore = txFrame*framesRepair
+    idx = 0
+    while(lines[idx][0]<timeToIgnore):
+        idx += 1
+    lines = lines[idx:]
+    inicial = list(lines[0])
+    for i in range(len(lines)):
+        lines[i][0] -= inicial[0]
 
-x,y = zip(*[gpsPos(txFrame*i,lines) for i in range(int(nFrames))])
+outLines = []
+for i in range(start,int(nFrames)):
+    outLines.append(["I_{0:06}.png".format(i)] + gpsPos(txFrame*(i-start),lines))
+
+
+_,x,y,_,_,_ = zip(*outLines)
 _,_,xx,yy,_,_, _ = zip(*lines)
 plt.plot(x,y)
 plt.plot(xx,yy)
 plt.show()
 
-# para cada frame
-    #calcular a posicao gps dele.
-
-for i in range(len(lines)):
-    outLines[i] = ["I_{0:06}.png".format(int(round(lines[i][0]/txFrame)))] + outLines[i]
-
-
 csv.writer(open(outputGPSImageFile,"w"),delimiter=";").writerows(outLines)
-#while (video.grab()):
-#    print "Frame ", frame
-#    b, img = video.retrieve()
-#    imgg = cvtColor(img,cv.CV_RGB2GRAY)
-#    #imgg = pyrDown(imgg)
-#    #imgg = equalizeHist(imgg)
-#    imwrite("{0}/{1}{2:06d}.png".format(pathToSave,filePrefix,frame),imgg)
-#    frame += 1
 

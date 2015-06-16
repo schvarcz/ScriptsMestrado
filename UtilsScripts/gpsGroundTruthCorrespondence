@@ -1,0 +1,46 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+import csv, os, sys
+from math import sqrt
+
+def showHelp():
+    print """
+
+    $ gpsSubset gpsFile1 gpsFile2 outputFile
+
+          """
+    sys.exit()
+
+def distance(pt1,pt2):
+    return sqrt((pt2[0]-pt1[0])**2 + (pt2[1]-pt1[1])**2)
+
+
+if len(sys.argv) < 4:
+    showHelp()
+
+gpsFile1 = os.path.expanduser(sys.argv[1])
+gpsFile2 = os.path.expanduser(sys.argv[2])
+outputFile = os.path.expanduser(sys.argv[3])
+
+
+print "1º GPS file: ", gpsFile1
+print "2º GPS file: ", gpsFile2
+print "Output file: ", outputFile
+
+gpsFile1 = [l for l in csv.reader(open(gpsFile1),delimiter=";")]
+gpsFile2 = [l for l in csv.reader(open(gpsFile2),delimiter=";")]
+
+correspondence = []
+for row1 in gpsFile1:
+    minDistance = float("inf")
+    closestsRow = None
+    for row2 in gpsFile2:
+        curDistance = distance( (float(row1[1]),float(row1[2])), (float(row2[1]),float(row2[2])) )
+        if minDistance > curDistance:
+            minDistance = curDistance
+            closestsRow = row2
+    if minDistance < 0.00009: #Equivale a +- 10 metros
+        correspondence.append( (row1[0][2:-4], closestsRow[0][2:-4]) )
+
+csv.writer(open(outputFile,"w"),delimiter="-").writerows(correspondence)
+

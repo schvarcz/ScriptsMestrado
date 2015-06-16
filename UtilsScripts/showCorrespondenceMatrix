@@ -3,14 +3,14 @@
 import matplotlib.pyplot as plt
 from numpy import *
 from scipy.misc import *
-import sys, os
+import sys, os, csv
 
 
 def showHelp():
     print """
 Plot correspondence matrix
 
-    $ showCorrespondenceMatrix imageFile
+    $ showCorrespondenceMatrix imageFile [groundTruth]
 
           """
     sys.exit()
@@ -21,6 +21,10 @@ if len(sys.argv) < 2:
 
 imageFile = os.path.expanduser(sys.argv[1])
 
+groundTruth = None
+if len(sys.argv) == 3:
+    groundTruth = os.path.expanduser(sys.argv[2])
+
 img = imread(imageFile)
 ma, mi = 1.0, 0.0
 imgMax, imgMin = img.max(), img.min()
@@ -30,5 +34,10 @@ plt.colorbar()
 plt.xlabel("Test")
 plt.ylabel("Query")
 plt.title("SchvarczSLAM - Normalized")
+
+if groundTruth != None:
+    lines = [[int(c[0]),int(c[1])]for c in csv.reader(open(groundTruth),delimiter="-")]
+    x,y = zip(*lines)
+    plt.plot(x,y)
 plt.show()
 

@@ -1,0 +1,47 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+import csv, os, sys
+
+def showHelp():
+    print """
+
+    $ gpsSubset gpsFile outputFile start [end] [step]
+
+          """
+    sys.exit()
+
+
+if len(sys.argv) < 3:
+    showHelp()
+
+gpsFile = os.path.expanduser(sys.argv[1])
+outputFile = os.path.expanduser(sys.argv[2])
+startPoint = int(sys.argv[3])
+
+endPoint = None
+step = 1
+
+if len(sys.argv) > 4:
+    endPoint = int(sys.argv[4])
+
+if len(sys.argv) > 5:
+    step = int(sys.argv[5])
+
+gpsData = [l for l in csv.reader(open(gpsFile),delimiter=";")]
+
+if endPoint == None:
+    endPoint = len(gpsData)
+
+print "GPS file: ", gpsFile
+print "Output file: ", outputFile
+print "Start: ", startPoint
+print "End: ", endPoint
+print "step: ", step
+
+frameJump = int(gpsData[0][0][2:-4])
+gpsDataSelected = [gpsData[i-frameJump] for i in range(startPoint,endPoint,step)]
+
+for i in range(len(gpsDataSelected)):
+    gpsDataSelected[i][0] = "I_{0:06}.png".format(i)
+csv.writer(open(outputFile,"w"),delimiter=";").writerows(gpsDataSelected)
+
