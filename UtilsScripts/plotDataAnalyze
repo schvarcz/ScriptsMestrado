@@ -5,6 +5,17 @@ from os import listdir
 from matplotlib import pyplot as plt
 
 frameInterval = 10
+
+def getName(name):
+    name = name.replace("/"," - ")
+    name = name.replace("RW","Seq:")
+    name = name.replace("MaxVar","")
+    name = name.replace("MaxHalf","MS:")
+    name = name.split("_")
+    del name[2:4]
+    return " ".join(name)
+
+
 def openData(path):
     data = file(path,"r").readlines()
     threshold = float(data[0].split(",")[2])
@@ -15,7 +26,7 @@ def openData(path):
 def getMatches(path):
     matches = []
     for f in listdir(path):
-        if f[:5] == "I_new" and int(f[6:12]) > 222:
+        if f[:5] == "I_new":
             matches.append([int(f[6:12]), int(f[17:23]), float(f[24:29].replace(",","."))])
     matches = sorted(matches)
     return matches
@@ -24,7 +35,7 @@ def getMatches(path):
 def getLabel(d):
     label = d[1]
     if label == "":
-        label = d[0]
+        label = getName(d[0])
     return label
 
 
@@ -36,7 +47,7 @@ def getGroundTruth(frame,groundTruth):
 
 def precisionRecall(matches, groundTruth):
     pr = []
-    for threshold in arange(1.,0.,-0.001):
+    for threshold in arange(0.,1.,0.001):
         nroTrues = 0.
         nroReturns = 0.
         for m in matches:
@@ -79,6 +90,41 @@ def plotPrecisionRecall(data):
     plt.ylabel("Precision")
 
 
+def plotPrecisionRecallMap(data):
+    #Recall
+    f = plt.figure()
+    size = 500
+    dataStep = size/len(data)
+    mapPlot = zeros((size,size),dtype="float32")
+    yLabels = []
+
+    for idx in range(len(data)):
+        d = data[idx]
+        print "idx: ", idx
+        p, r = zip(*d[1])
+        
+        for i in range(len(r)-1):
+            xBottom, xTop = floor(r[i]*size), ceil(r[i+1]*size)
+            yBottom, yTop = idx*dataStep, (idx+1)*dataStep
+            mapPlot[yBottom:yTop, xBottom:xTop] = p[i]
+
+        mapPlot[idx*dataStep:(idx+1)*dataStep,:floor(r[0]*size)] = p[0]
+        #mapPlot[idx*dataStep:(idx+1)*dataStep,ceil(r[-1]*size):] = p[-1]
+
+        #Apenas por uma linha preta para separar os resultados
+        plt.plot([0,size],[idx*dataStep,idx*dataStep],"k-")
+        #Guarda os nomes dos resultados para se plotar no eixo y
+        yLabels.append(getLabel(d[0]))
+
+    plt.imshow(mapPlot)
+    plt.xticks(arange(0.,size,0.1*size),arange(0.,1.,0.1))
+    plt.yticks(range(dataStep/2,size,dataStep),yLabels)
+    plt.title("SeqSLAM vs SAFE")
+    plt.xlabel("Recall")
+    #plt.ylabel("Sequence")
+    plt.colorbar()
+
+
 def plotPrecisionThreshold(data,groundTruth, frameInterval = 5):
     for d in data:
         truePositive = []
@@ -100,8 +146,7 @@ def plotPrecisionThreshold(data,groundTruth, frameInterval = 5):
         plt.title(getLabel(d[0]))
         plt.xlabel("Frame")
         plt.ylabel("Guarantee")
-    
-    
+
 
 groundTruth = file("groundTruth.txt","r").readlines()
 groundTruth = asarray([ [int(m) for m in g.split("-")] for g in groundTruth])
@@ -118,12 +163,13 @@ groundTruth = asarray([ [int(m) for m in g.split("-")] for g in groundTruth])
 #SeqSLAM_pr = precisionRecall2(SeqSLAM_matches, groundTruth)
 #SchvarczSLAM_pr = precisionRecall2(SchvarczSLAM_matches, groundTruth)
 
+
 dataPlot = []
 pathList = [
-#              ["SeqSLAM/RW_5/","Sequence Length 5","b-"],
-#              ["SeqSLAM/RW_10/","Sequence Length 10","r-"],
-#              ["SeqSLAM/RW_15/","Sequence Length 15","r--"],
-              ["SeqSLAM/RW_20/","SeqSLAM - Seq:20","r-"],
+              ["SeqSLAM/RW_5","","b-"],
+              ["SeqSLAM/RW_10","","r-"],
+              ["SeqSLAM/RW_15","","r--"],
+              ["SeqSLAM/RW_20","","r-"],
 
 #             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_10","","--"],
@@ -139,7 +185,7 @@ pathList = [
 #             ["SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_20","","--"],
 
 #             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_5","","--"],
-             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_10","SafeSLAM - Seq:10 MS:10","b-"],
+             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_10","","b-"],
 #             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_15","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_5","","--"],
@@ -166,7 +212,7 @@ pathList = [
 
 #             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_10","","--"],
-             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_15","SafeSLAM - Seq:20 MS:15","g-"],
+             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_15","","g-"],
 #             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_10","","--"],
@@ -183,8 +229,9 @@ for dataset in pathList:
     matches = getMatches(path)
     distances = stats(matches, groundTruth)
     pr = precisionRecall(matches, groundTruth)
-    dataPlot.append((dataset,pr,distances, matches))
-    
+    if pr != []:
+        dataPlot.append((dataset,pr,distances, matches))
+
 showFixedThreshold = False
 
 if showFixedThreshold:
@@ -203,6 +250,7 @@ if showFixedThreshold:
 
 #Recall
 plotPrecisionRecall(dataPlot)
+plotPrecisionRecallMap(dataPlot)
 
 #Outliers
 #f = plt.figure()
