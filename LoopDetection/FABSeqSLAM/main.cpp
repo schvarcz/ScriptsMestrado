@@ -563,7 +563,8 @@ int generateBOWIDFWeights(string bowImageDescPath,
         cout << "\r"<<  indexWord << "° Word " << 100.0*indexWord/bowImageDesc.cols << "%                  " << occurrence;
         fflush(stdout);
         float idf = 0;
-        idf = log(bowImageDesc.rows/occurrence);
+        if (occurrence != 0)
+            idf = log(bowImageDesc.rows/occurrence);
 
 
         BOWIDFWeights.push_back(idf);
@@ -2053,7 +2054,7 @@ int RunFABMAPFull(FileStorage fs)
     }
 
     cout << "openFABMAP done" << endl;
-    cin.sync(); cin.ignore();
+    //cin.sync(); cin.ignore();
 
     fs.release();
 
