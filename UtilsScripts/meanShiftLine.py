@@ -10,8 +10,9 @@ from numpy.random import random_sample
 f1 = plt.figure()
 f1.show()
 maxWindowSize = 5
+seqSize = 35
 
-imgGlobal = cv2.imread("results.bmp")
+imgGlobal = cv2.imread("SAFE.bmp")
 figIdx = 0
 
 def show(img,line, hist = None, histTitle = None):
@@ -22,8 +23,8 @@ def show(img,line, hist = None, histTitle = None):
         ax1 = f1.add_subplot(122)
     ax1.imshow(img)
     #plt.colorbar()
-    ax1.set_xlim(0,29+2*maxWindowSize)
-    ax1.set_ylim(29+2*maxWindowSize,0)
+    ax1.set_xlim(0,seqSize+2*maxWindowSize)
+    ax1.set_ylim(seqSize+2*maxWindowSize,0)
 
     x,y = zip(*line)
     ax1.plot(x,y,"b")
@@ -254,8 +255,8 @@ class LSE(object):
         return zip(x,y)
 
 
-y ,x = 145, 15
-rectV = cv2.cvtColor(imgGlobal[y-maxWindowSize:y+30+maxWindowSize,x-maxWindowSize:x+30+maxWindowSize],cv2.cv.CV_RGB2GRAY).astype(float32)
+y ,x = 254, 202
+rectV = cv2.cvtColor(imgGlobal[y-maxWindowSize:y+seqSize+maxWindowSize,x-maxWindowSize:x+seqSize+maxWindowSize],cv2.cv.CV_RGB2GRAY).astype(float32)
 #plt.imshow(rectV)
 #plt.show()
 ma, mi = rectV.max(), rectV.min()
@@ -269,10 +270,11 @@ rectVB = -rectVB+1.
 #plt.colorbar()
 #plt.show()
 
-line = zip(*[arange(0+maxWindowSize,29+maxWindowSize),arange(0+maxWindowSize,29+maxWindowSize)])
+line = zip(*[arange(maxWindowSize,seqSize+maxWindowSize),arange(maxWindowSize,seqSize+maxWindowSize)])
 
 plt.ion()
 
+print line
 relaxLineMeanShift3(rectVB,line)
 print line
 
@@ -286,8 +288,8 @@ f1.clear()
 
 ax1 = f1.add_subplot(111)
 ax1.imshow(rectVB)
-ax1.set_xlim(0,29+2*maxWindowSize)
-ax1.set_ylim(29+2*maxWindowSize,0)
+ax1.set_xlim(0,seqSize+2*maxWindowSize)
+ax1.set_ylim(seqSize+2*maxWindowSize,0)
 
 x,y = zip(*line)
 ax1.plot(x,y,"b")

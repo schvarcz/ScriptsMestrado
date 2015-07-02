@@ -24,20 +24,20 @@ imageFile = os.path.expanduser(sys.argv[1])
 groundTruth = None
 if len(sys.argv) == 3:
     groundTruth = os.path.expanduser(sys.argv[2])
-
+plotName = imageFile.split("/")[-1].split(".")[0]
 img = imread(imageFile)
 ma, mi = 1.0, 0.0
 imgMax, imgMin = img.max(), img.min()
 img = (ma-mi)*(img - imgMin)/(imgMax - imgMin) + mi
 plt.imshow(img)
 plt.colorbar()
-plt.xlabel("Test")
-plt.ylabel("Query")
-plt.title("SchvarczSLAM - Normalized")
+plt.xlabel("Test Image")
+plt.ylabel("Query Image")
+plt.title(plotName)
 
 if groundTruth != None:
     lines = [[int(c[0]),int(c[1])]for c in csv.reader(open(groundTruth),delimiter="-")]
-    x,y = zip(*lines)
+    y,x = zip(*lines)
     plt.plot(x,y)
 plt.show()
 
