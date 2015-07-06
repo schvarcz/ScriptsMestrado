@@ -8,6 +8,7 @@ frameInterval = 10
 
 def getName(name):
     name = name.replace("/"," - ")
+    name = name.replace("SafeSLAM","SAFE")
     name = name.replace("RW","Seq:")
     name = name.replace("MaxVar","")
     name = name.replace("MaxHalf","MS:")
@@ -94,13 +95,12 @@ def plotPrecisionRecallMap(data):
     #Recall
     f = plt.figure()
     size = 500
-    dataStep = size/len(data)
+    dataStep = float(size)/len(data)
     mapPlot = zeros((size,size),dtype="float32")
     yLabels = []
 
     for idx in range(len(data)):
         d = data[idx]
-        print "idx: ", idx
         p, r = zip(*d[1])
         
         for i in range(len(r)-1):
@@ -116,13 +116,17 @@ def plotPrecisionRecallMap(data):
         #Guarda os nomes dos resultados para se plotar no eixo y
         yLabels.append(getLabel(d[0]))
 
-    plt.imshow(mapPlot)
-    plt.xticks(arange(0.,size,0.1*size),arange(0.,1.,0.1))
-    plt.yticks(range(dataStep/2,size,dataStep),yLabels)
+    plt.imshow(ma.masked_where(mapPlot ==0,mapPlot),vmin=0.,vmax=1.)
+    plt.xticks(arange(0.,size+1,0.1*size),arange(0.,1.1,0.1))
+    plt.yticks(range(int(dataStep/2),size,int(dataStep)),yLabels)
+    plt.ylim(0,size)
     plt.title("SeqSLAM vs SAFE")
     plt.xlabel("Recall")
-    #plt.ylabel("Sequence")
-    plt.colorbar()
+    cb = plt.colorbar()
+    cb.set_ticks(arange(0.,1.1,0.1))
+    ax = cb.ax
+    ax.text(-0.6,0.5,'Precision',rotation=90)
+
 
 
 def plotPrecisionThreshold(data,groundTruth, frameInterval = 5):
@@ -171,10 +175,10 @@ pathList = [
               ["SeqSLAM/RW_15","","r--"],
               ["SeqSLAM/RW_20","","r-"],
 
-#             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5","","--"],
-#             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_10","","--"],
-#             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_15","","--"],
-#             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_20","","--"],
+             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5","","--"],
+             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_10","","--"],
+             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_15","","--"],
+             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_15","","--"],
@@ -184,10 +188,10 @@ pathList = [
 #             ["SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_15","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.9_MaxHalf_20","","--"],
 
-#             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_5","","--"],
+             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_5","","--"],
              ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_10","","b-"],
-#             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_15","","--"],
-#             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_20","","--"],
+             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_15","","--"],
+             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_15","","--"],
@@ -197,10 +201,10 @@ pathList = [
 #             ["SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_15","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.9_MaxHalf_20","","--"],
 
-#             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_5","","--"],
-#             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_10","","--"],
-#             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_15","","--"],
-#             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_20","","--"],
+             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_5","","--"],
+             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_10","","--"],
+             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_15","","--"],
+             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_15","","--"],
@@ -210,10 +214,10 @@ pathList = [
 #             ["SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_15","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.9_MaxHalf_20","","--"],
 
-#             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_5","","--"],
-#             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_10","","--"],
+             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_5","","--"],
+             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_10","","--"],
              ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_15","","g-"],
-#             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_20","","--"],
+             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_15","","--"],
@@ -224,7 +228,7 @@ pathList = [
 #             ["SafeSLAM/RW_20_MaxVar_0.9_MaxHalf_20","","--"],
     ]
 
-for dataset in pathList:
+for dataset in pathList[::-1]:
     path, label, linestyle = dataset
     matches = getMatches(path)
     distances = stats(matches, groundTruth)
@@ -249,7 +253,7 @@ if showFixedThreshold:
 
 
 #Recall
-plotPrecisionRecall(dataPlot)
+#plotPrecisionRecall(dataPlot)
 plotPrecisionRecallMap(dataPlot)
 
 #Outliers
