@@ -6,7 +6,7 @@ from math import sqrt
 def showHelp():
     print """
 
-    $ gpsSubset gpsFile1 outputFile [distance]
+    $ gpsSelectByDistance gpsFile outputFile [distance]
 
           """
     sys.exit()
@@ -18,30 +18,30 @@ def distance(pt1,pt2):
 if len(sys.argv) < 3:
     showHelp()
 
-gpsFile1 = os.path.expanduser(sys.argv[1])
+gpsFile = os.path.expanduser(sys.argv[1])
 outputFile = os.path.expanduser(sys.argv[2])
 
 minDistance = 0.00009 #Equivale a +- 10 metros
 if len(sys.argv)>3:
     minDistance = float(sys.argv[3]) #0.00009 #Equivale a +- 10 metros
 
-print "1º GPS file: ", gpsFile1
+print "GPS file: ", gpsFile
 print "Distance: ", minDistance
 print "Output file: ", outputFile
 
-gpsFile1 = [l for l in csv.reader(open(gpsFile1),delimiter=";")]
+gpsFile = [l for l in csv.reader(open(gpsFile),delimiter=";")]
 
 correspondence = []
 lastPoint = None
-for row1 in gpsFile1:
+for row in gpsFile:
 
-    curPoint = (float(row1[1]),float(row1[2]))
+    curPoint = (float(row[1]),float(row[2]))
 
     if lastPoint == None or distance(curPoint, lastPoint) > minDistance:
-        correspondence.append(row1)
-        lastPoint = curPoint
+        correspondence.append(row)
+        lastPoint = list(curPoint)
 
 
 
-csv.writer(open(outputFile,"w"),delimiter="-").writerows(correspondence)
+csv.writer(open(outputFile,"w"),delimiter=";").writerows(correspondence)
 

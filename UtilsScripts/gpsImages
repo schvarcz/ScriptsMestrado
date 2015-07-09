@@ -1,0 +1,38 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+import csv, os, sys
+from math import sqrt
+import shutil
+
+def showHelp():
+    print """
+
+    $ gpsImages gpsFile imagesFolder outputFolder
+
+          """
+    sys.exit()
+
+
+if len(sys.argv) < 4:
+    showHelp()
+
+gpsFile = os.path.expanduser(sys.argv[1])
+imagesFolder = os.path.expanduser(sys.argv[2]) + "/"
+outputFolder = os.path.expanduser(sys.argv[3]) + "/"
+
+if not os.path.exists(outputFolder):
+    os.makedirs(outputFolder)
+
+
+print "GPS file: ", gpsFile
+print "Images Folder: ", imagesFolder
+print "Output folder: ", outputFolder
+
+gpsFile = [l for l in csv.reader(open(gpsFile),delimiter=";")]
+
+correspondence = []
+for row in gpsFile:
+    print row[0]
+    shutil.copy(imagesFolder+row[0], outputFolder+row[0])
+
+
