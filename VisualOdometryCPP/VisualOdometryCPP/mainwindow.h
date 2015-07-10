@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <processthread.h>
 
-#include <viso_mono.h>
+#include <viso/viso_mono.h>
 #include <png++/png.hpp>
 
 using namespace std;

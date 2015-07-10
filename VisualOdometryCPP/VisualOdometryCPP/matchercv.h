@@ -2,7 +2,7 @@
 #define MATCHERCV_H
 #include <iostream>
 #include <string>
-#include <imatcher.h>
+#include <viso/imatcher.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/nonfree/nonfree.hpp>
 

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <viso_mono.h>
+#include <viso/viso_mono.h>
 #include <png++/png.hpp>
 #include <opencv2/opencv.hpp>
 

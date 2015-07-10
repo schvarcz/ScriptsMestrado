@@ -92,7 +92,7 @@
       <item row="0" column="1">
        <widget class="QLineEdit" name="LEDir">
         <property name="text">
-         <string>/home/schvarcz/Dissertacao/datasets/nao/nao2_rect/</string>
+         <string>/home/schvarcz/Dissertacao/datasets/motox/orto04.11.2014/protasio_selected2</string>
         </property>
        </widget>
       </item>

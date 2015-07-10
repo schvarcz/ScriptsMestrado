@@ -30,7 +30,7 @@ Street, Fifth Floor, Boston, MA 02110-1301, USA
 #include <emmintrin.h>
 #include <algorithm>
 #include <vector>
-#include <imatcher.h>
+#include <viso/imatcher.h>
 
 #include "matrix.h"
 

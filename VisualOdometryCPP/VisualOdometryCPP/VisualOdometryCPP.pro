@@ -14,33 +14,33 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    viso_stereo.cpp \
-    viso_mono.cpp \
-    viso.cpp \
-    triangle.cpp \
-    reconstruction.cpp \
-    matrix.cpp \
-    matcher.cpp \
-    filter.cpp \
     processthread.cpp \
     matchercv.cpp \
-    imatcher.cpp \
-    robot.cpp
+    robot.cpp \
+    viso/viso_stereo.cpp \
+    viso/viso_mono.cpp \
+    viso/viso.cpp \
+    viso/triangle.cpp \
+    viso/reconstruction.cpp \
+    viso/matrix.cpp \
+    viso/matcher.cpp \
+    viso/filter.cpp \
+    viso/imatcher.cpp
 
 HEADERS  += mainwindow.h \
-    viso_stereo.h \
-    viso_mono.h \
-    viso.h \
-    triangle.h \
-    timer.h \
-    reconstruction.h \
-    matrix.h \
-    matcher.h \
-    filter.h \
     processthread.h \
     matchercv.h \
-    imatcher.h \
-    robot.h
+    robot.h \
+    viso/viso_stereo.h \
+    viso/viso_mono.h \
+    viso/viso.h \
+    viso/triangle.h \
+    viso/reconstruction.h \
+    viso/matrix.h \
+    viso/matcher.h \
+    viso/filter.h \
+    viso/imatcher.h \
+    viso/timer.h
 
 FORMS    += mainwindow.ui
 
