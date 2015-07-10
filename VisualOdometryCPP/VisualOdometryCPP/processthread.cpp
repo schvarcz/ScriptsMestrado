@@ -38,7 +38,7 @@ void ProcessThread::run()
 //            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA"
 //            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2"
 //            << "motox/VID_20140617_163505406_GRAY"
-            << "motox/VID_20140617_162058756_ESCOLHA"
+//            << "motox/VID_20140617_162058756_ESCOLHA"
 //            << "motox/2014-11-04_ESCOLHA"
 //            << "motox/datasetCompleto"
 //            << "car_simulation/carro_stereo_2014-06-12-02-14-53_2"
@@ -48,6 +48,8 @@ void ProcessThread::run()
 //            << "nao/nao2_rect_escolha"
 //            << "nao/naooo_2014-03-10-17-48-35"
 //            << "nao/naooo_2014-03-10-17-48-35_gray"
+            << "motox/orto04.11.2014/protasio_selected2/"
+//            << "motox/orto25.11.2014/protasio_selected2/"
              ;
 
     //    int steps[] = {25,20,15,10,5,3,2,1};
@@ -71,8 +73,8 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
         features = new ofstream();
         positions = new ofstream();
 
-        features->open((savePath+"/features_%1.csv").arg(step).toAscii());
-        positions->open((savePath+"/posicoes_%1.csv").arg(step).toAscii());
+        features->open((savePath+"/features_%1.csv").arg(step).toStdString().c_str());
+        positions->open((savePath+"/posicoes_%1.csv").arg(step).toStdString().c_str());
 
         // init visual odometry
         VisualOdometryMono viso(param);
@@ -94,7 +96,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 
             // input file names
             char base_name[256];
-            sprintf(base_name, filePattern.toAscii(),i);
+            sprintf(base_name, filePattern.toStdString().c_str(),i);
             QString img_file_name  = defaultPath + "/" + base_name;
             *features << "imagem " << i << endl;
 
@@ -102,7 +104,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
             try {
 
                 // load left and right input image
-                png::image< png::gray_pixel > img(img_file_name.toAscii());
+                png::image< png::gray_pixel > img(img_file_name.toStdString().c_str());
 
                 // image dimensions
                 int32_t width  = img.get_width();
@@ -171,8 +173,8 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
     features = new ofstream();
     positions = new ofstream();
 
-    features->open((savePath+"/features_%1.csv").arg(step).toAscii());
-    positions->open((savePath+"/posicoes_%1.csv").arg(step).toAscii());
+    features->open((savePath+"/features_%1.csv").arg(step).toStdString().c_str());
+    positions->open((savePath+"/posicoes_%1.csv").arg(step).toStdString().c_str());
 
     // init visual odometry
     VisualOdometryMono viso(param);
@@ -194,7 +196,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
 
         // input file names
         char base_name[256];
-        sprintf(base_name, filePattern.toAscii(),i);
+        sprintf(base_name, filePattern.toStdString().c_str(),i);
         QString img_file_name  = defaultPath + "/" + base_name;
         qDebug() << img_file_name << endl;
         *features << "imagem " << i << endl;

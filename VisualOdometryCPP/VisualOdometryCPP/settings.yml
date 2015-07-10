@@ -1,0 +1,87 @@
+%YAML:1.0
+
+
+FilePaths:
+   OdometryImages: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/protasio_selected/I_%06d.png"
+   OdometryFile: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/odometry"
+   SavePath: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/features/"
+
+#---------------------------------------------------------------------------
+
+CameraMatrix:
+    f: 2.31584916e+03
+    cu: 1.00664394e+03
+    cv: 5.04108086e+02
+
+#---------------------------------------------------------------------------
+
+FeatureOptions:
+
+   # Feature Detection Options
+   # "FAST"
+   # "STAR"
+   # "SIFT"
+   # "SURF"
+   # "MSER"
+
+   DetectorType: "STAR"
+   
+   # Feature Detection Modes
+   # "STATIC"
+   # "ADAPTIVE"
+   
+   DetectorMode: "ADAPTIVE"
+   
+   #ADAPTIVE SETTINGS
+   
+   Adaptive:
+      MinFeatures: 100
+      MaxFeatures: 200
+      MaxIters: 5
+      
+   # STATIC SETTINGS
+   
+   FastDetector:
+      Threshold: 50
+      NonMaxSuppression: 1
+
+   StarDetector:
+      MaxSize: 32 #45
+      Response: 10 #30
+      LineThreshold: 18 #10
+      LineBinarized: 18 #8
+      Suppression: 20 #5
+
+   SiftDetector:
+      EdgeThreshold: 10
+      ContrastThreshold: 0.04
+      
+      #OPENCV2.4only
+      NumFeatures: 200
+      NumOctaveLayers: 3
+      Sigma: 1.6
+
+   SurfDetector:
+      HessianThreshold: 1000 #400
+      NumOctaves: 4
+      NumOctaveLayers: 2 
+      Upright: 1
+      Extended: 0
+
+   MSERDetector:
+      Delta: 5
+      MinArea: 60
+      MaxArea: 14400 
+      MaxVariation: 0.25
+      MinDiversity: 0.2
+      MaxEvolution: 200  
+      AreaThreshold: 1.01  
+      MinMargin: 0.003  
+      EdgeBlurSize: 5   
+
+   # Descriptor Extraction Options
+   # "SIFT"
+   # "SURF"
+
+   ExtractorType: "SURF"
+#---------------------------------------------------------------------------
