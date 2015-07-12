@@ -19,20 +19,20 @@ class ProcessThread: public QThread
 {
     Q_OBJECT
 public:
-    ProcessThread(VisualOdometryMono::parameters param, QString dir, QString filePattern, int step, ofstream *positions, ofstream *features);
+    ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString filePattern, int step, ofstream *positions, ofstream *features);
+    ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString odometryOutputFile);
 
 protected:
     void run();
-    void gerarDadosComLibviso(QString defaultPath, QString savePath, int step);
-    void gerarDadosCV(QString defaultPath, QString savePath, int step);
+    void gerarDadosComLibviso(QString defaultPath);
+    void gerarDadosCV(QString defaultPath, QString savePath);
     void drawFeaturesCorrespondence(Mat& img, vector<IMatcher::p_match> fts, const Scalar& colorLine, const Scalar& colorPoint);
     void drawFeatures(Mat& img, vector<KeyPoint> fts, const Scalar& colorPoint);
 
 private:
     int step;
     VisualOdometryMono::parameters param;
-    QString dir, filePattern;
-    ofstream *positions, *features;
+    QString odometryImagesPath, filePattern, odometryOutputFile, featuresOutputFile, featuresImagesOutputPath;
 };
 
 #endif // PROCESSTHREAD_H

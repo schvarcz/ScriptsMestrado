@@ -79,13 +79,13 @@ void MainWindow::on_pushButton_clicked()
     QString dir = ui->LEDir->text(), filePattern = ui->LENamePattern->text();
     int step = ui->SBFrameStep->value();
 
-//    posicoes.open((dir+"/posicoes_%1.csv").arg(step).toAscii());
-//    features.open((dir+"/features_%1.csv").arg(step).toAscii());
+    //posicoes.open((dir+"/posicoes_%1.csv").arg(step).toAscii());
+    //features.open((dir+"/features_%1.csv").arg(step).toAscii());
 
 
-    pt = new ProcessThread(param, dir, filePattern, step, &posicoes, &features);
-    connect(pt,SIGNAL(finished()),this,SLOT(reactiveButton()));
-    pt->start();
+//    pt = new ProcessThread(param, dir, filePattern, step, &posicoes, &features);
+//    connect(pt,SIGNAL(finished()),this,SLOT(reactiveButton()));
+//    pt->start();
 }
 
 void MainWindow::reactiveButton()

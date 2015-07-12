@@ -2,9 +2,9 @@
 
 
 FilePaths:
-   OdometryImages: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/protasio_selected/I_%06d.png"
-   OdometryFile: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/odometry"
-   SavePath: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/features/"
+   OdometryImagesPath: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/protasio_selected/"
+   OdometryOutputFile: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/odometry"
+   FeaturesImagesOutputPath: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/features/"
 
 #---------------------------------------------------------------------------
 

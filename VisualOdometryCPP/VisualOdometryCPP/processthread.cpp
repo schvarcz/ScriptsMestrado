@@ -3,78 +3,37 @@
 ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString dir, QString filePattern, int step, ofstream *positions, ofstream *features): QThread()
 {
     this->param = param;
-    this->dir = dir;
+    this->odometryImagesPath = dir;
     this->filePattern = filePattern;
-    this->positions = positions;
-    this->features = features;
-    this->step = step;
+//    this->positions = positions;
+//    this->features = features;
+}
+
+ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString odometryOutputFile)
+{
+    this->param = param;
+    this->odometryImagesPath = odometryImagesPath;
+    this->odometryOutputFile = odometryOutputFile;
 }
 
 void ProcessThread::run()
 {
-    QString defaultPath = "/home/schvarcz/Dissertacao/datasets/";
-    QString savePath = "/home/schvarcz/Dissertacao/OdometriaVisual/features/";
+    QString sPath = ""; //savePath + "/step_eq_match_sift_" + QString::number(1);
 
-    QStringList paths;
-    paths
-//            << "2010_03_09_drive_0019"
-//            << "drone/20140318_132620"
-//            << "drone/20140318_132620_gray"
-//            << "drone/20140318_133931"
-//            << "drone/20140318_133931_gray"
-//            << "drone/20140327_135316_gray"
-//            << "drone/20140328_102444_gray"
-//            << "drone/video_20140327_135316"
-//            << "drone/video_20140328_102444"
-//            << "motox/VID_20140617_162058756_GRAY"
-//            << "motox/VID_20140617_162058756_GRAY_ESCOLHA"
-//            << "motox/VID_20140617_162058756_GRAY_ESCOLHA_GRAMA"
-//            << "motox/VID_20140617_162058756_GRAY_equalized"
-//            << "motox/VID_20140617_162058756_GRAY_equalized_small"
-//            << "motox/VID_20140617_162058756_GRAY_CURVA"
-//            << "motox/VID_20140617_162058756_GRAY_small_CURVA"
-//            << "motox/VID_20140617_162058756_GRAY_equalized_small_CURVA"
-//            << "motox/VID_20140617_162058756_GRAY_equalized_small_GRAMA_ESCOLHA"
-//            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA"
-//            << "motox/VID_20140617_162058756_GRAY_equalized_small_ESCOLHA2"
-//            << "motox/VID_20140617_163505406_GRAY"
-//            << "motox/VID_20140617_162058756_ESCOLHA"
-//            << "motox/2014-11-04_ESCOLHA"
-//            << "motox/datasetCompleto"
-//            << "car_simulation/carro_stereo_2014-06-12-02-14-53_2"
-//            << "nao/nao2"
-//            << "nao/nao2_gray"
-//            << "nao/nao2_rect"
-//            << "nao/nao2_rect_escolha"
-//            << "nao/naooo_2014-03-10-17-48-35"
-//            << "nao/naooo_2014-03-10-17-48-35_gray"
-            << "motox/orto04.11.2014/protasio_selected2/"
-//            << "motox/orto25.11.2014/protasio_selected2/"
-             ;
+    //QDir diretory;
+    //diretory.mkpath(sPath);
 
-    //    int steps[] = {25,20,15,10,5,3,2,1};
-    int steps[] = {1};
-//    int steps[] = {15};
-    for(int s = 0;s<1;s++)
-    {
-        for(QStringList::iterator path = paths.begin(); path != paths.end(); path++)
-        {
-            QDir diretory;
-            QString sPath = savePath+*path + "/step_eq_match_sift_" + QString::number(steps[s]);
-            diretory.mkpath(sPath);
-            gerarDadosCV(defaultPath+*path,sPath ,steps[s]);
-//            gerarDadosComLibviso(defaultPath+paths[0],sPath,steps[s]);
-        }
-    }
+    gerarDadosCV(this->odometryImagesPath,sPath);
+    //gerarDadosComLibviso(this->odometryImagesPath);
 }
 
-void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, int step)
+void ProcessThread::gerarDadosComLibviso(QString defaultPath)
 {
-        features = new ofstream();
-        positions = new ofstream();
+        ofstream *features = new ofstream();
+        ofstream *positions = new ofstream();
 
-        features->open((savePath+"/features_%1.csv").arg(step).toStdString().c_str());
-        positions->open((savePath+"/posicoes_%1.csv").arg(step).toStdString().c_str());
+        features->open(this->featuresOutputFile.toStdString().c_str());
+        positions->open(this->odometryOutputFile.toStdString().c_str());
 
         // init visual odometry
         VisualOdometryMono viso(param);
@@ -92,7 +51,7 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 
         bool replace = false;
         // loop through all frames i=0:372
-        for (int32_t i=0; i<nFrames; i+=step) {
+        for (int32_t i=0; i<nFrames; i++) {
 
             // input file names
             char base_name[256];
@@ -168,16 +127,18 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath, QString savePath, 
 }
 
 
-void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step)
+void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
 {
-    features = new ofstream();
-    positions = new ofstream();
+    ofstream *features = new ofstream();
+    ofstream *positions = new ofstream();
 
-    features->open((savePath+"/features_%1.csv").arg(step).toStdString().c_str());
-    positions->open((savePath+"/posicoes_%1.csv").arg(step).toStdString().c_str());
+    features->open(this->featuresOutputFile.toStdString().c_str());
+    positions->open(this->odometryOutputFile.toStdString().c_str());
 
+    cout << "viso " << endl;
     // init visual odometry
     VisualOdometryMono viso(param);
+    cout << "viso " << endl;
 
     // current pose (this matrix transforms a point from the current
     // frame's camera coordinates to the first frame's camera coordinates)
@@ -189,10 +150,12 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
     filtro << "*.png";
     int nFrames = diretory.entryList(filtro).count();
     qDebug() << nFrames;
+
+    cout << "viso " << endl;
     bool replace = false;
 
     // loop through all frames i=0:372
-    for (int i=0; i<nFrames; i+=step) {
+    for (int i=0; i<nFrames; i++) {
 
         // input file names
         char base_name[256];
@@ -258,8 +221,11 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath, int step
             this->drawFeaturesCorrespondence(img,viso.getInliers(), Scalar(0, 0, 255), Scalar(0,255,255));
 //            imshow("features",img);
 
-            QString fileName = QString("/I1_%0.png").arg(QString::number(i/step),6, QChar('0'));
-            imwrite((savePath+fileName).toStdString(),img);
+            if (savePath != "")
+            {
+                QString fileName = QString("/I1_%0.png").arg(QString::number(i/step),6, QChar('0'));
+                imwrite((savePath+fileName).toStdString(),img);
+            }
             qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3];
 //            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
             *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << "," << img_file_name.toStdString() << endl;

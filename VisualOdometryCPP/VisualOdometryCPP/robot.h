@@ -15,10 +15,9 @@ public:
     void setImage(Mat newImage);
     Point2f getPosition();
     void estimateMovement(Mat newImage);
-    void loopDetection();
-    void relaxGraph();
+    //void loopDetection();
+    //void relaxGraph();
     vector<Point2f> mPath;
-    //MNode mKnowleadge;
     Mat mView;
 };
 
