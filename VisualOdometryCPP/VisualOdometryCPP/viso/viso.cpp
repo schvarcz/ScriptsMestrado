@@ -49,9 +49,6 @@ bool VisualOdometry::updateMotion () {
     if (delta.size()!=6)
         return false;
 
-    for(int i =0;i<6;i++)
-        cout << delta[i] << "; ";
-    cout << endl;
     // set transformation matrix (previous to current frame)
     Tr_delta = transformationVectorToMatrix(delta);
     Matrix tr(6,1);

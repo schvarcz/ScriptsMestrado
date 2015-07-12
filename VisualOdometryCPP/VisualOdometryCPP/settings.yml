@@ -2,8 +2,8 @@
 
 
 FilePaths:
-   OdometryImagesPath: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/protasio_selected/"
-   OdometryOutputFile: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/odometry"
+   OdometryImagesPath: "/home/schvarcz/Dissertacao/datasets/motox/orto25.11.2014/protasio_selected2/"
+   OdometryOutputFile: "/home/schvarcz/Dissertacao/datasets/motox/orto25.11.2014/odometry"
    FeaturesImagesOutputPath: "/home/schvarcz/Dissertacao/motox/orto25.11.2014/features/"
 
 #---------------------------------------------------------------------------

@@ -34,8 +34,6 @@ void MatcherCV::matchFeatures()
     flannMatcher.match(I1pd,I1cd, matches2_1);
 
 
-    cout << "Chave: " << I1cd.size() << "\t" << I1pd.size() << "\t" << matches1_2.size() << endl;
-
     flannMatcher.match(I1pd,I1ppd, matches2_3);
     flannMatcher.match(I1ppd,I1pd, matches3_2);
 

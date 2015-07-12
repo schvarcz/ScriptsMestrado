@@ -79,11 +79,8 @@ void MainWindow::on_pushButton_clicked()
     QString dir = ui->LEDir->text(), filePattern = ui->LENamePattern->text();
     int step = ui->SBFrameStep->value();
 
-    //posicoes.open((dir+"/posicoes_%1.csv").arg(step).toAscii());
-    //features.open((dir+"/features_%1.csv").arg(step).toAscii());
 
-
-//    pt = new ProcessThread(param, dir, filePattern, step, &posicoes, &features);
+//    pt = new ProcessThread(param, dir, filePattern);
 //    connect(pt,SIGNAL(finished()),this,SLOT(reactiveButton()));
 //    pt->start();
 }

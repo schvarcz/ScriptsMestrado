@@ -19,7 +19,7 @@ class ProcessThread: public QThread
 {
     Q_OBJECT
 public:
-    ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString filePattern, int step, ofstream *positions, ofstream *features);
+    ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString filePattern, int step);
     ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString odometryOutputFile);
 
 protected:
@@ -32,7 +32,7 @@ protected:
 private:
     int step;
     VisualOdometryMono::parameters param;
-    QString odometryImagesPath, filePattern, odometryOutputFile, featuresOutputFile, featuresImagesOutputPath;
+    QString odometryImagesPath, filePattern, odometryOutputFile, featuresImagesOutputPath;
 };
 
 #endif // PROCESSTHREAD_H

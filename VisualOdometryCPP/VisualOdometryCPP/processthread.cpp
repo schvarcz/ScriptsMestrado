@@ -1,19 +1,18 @@
 #include "processthread.h"
 
-ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString dir, QString filePattern, int step, ofstream *positions, ofstream *features): QThread()
+ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString dir, QString filePattern, int step): QThread()
 {
     this->param = param;
     this->odometryImagesPath = dir;
     this->filePattern = filePattern;
-//    this->positions = positions;
-//    this->features = features;
 }
 
-ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString odometryOutputFile)
+ProcessThread::ProcessThread(VisualOdometryMono::parameters param, QString odometryImagesPath, QString odometryOutputFile): QThread()
 {
     this->param = param;
     this->odometryImagesPath = odometryImagesPath;
     this->odometryOutputFile = odometryOutputFile;
+    filePattern = QString("I_%06d.png");
 }
 
 void ProcessThread::run()
@@ -29,10 +28,8 @@ void ProcessThread::run()
 
 void ProcessThread::gerarDadosComLibviso(QString defaultPath)
 {
-        ofstream *features = new ofstream();
         ofstream *positions = new ofstream();
 
-        features->open(this->featuresOutputFile.toStdString().c_str());
         positions->open(this->odometryOutputFile.toStdString().c_str());
 
         // init visual odometry
@@ -57,7 +54,6 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath)
             char base_name[256];
             sprintf(base_name, filePattern.toStdString().c_str(),i);
             QString img_file_name  = defaultPath + "/" + base_name;
-            *features << "imagem " << i << endl;
 
             // catch image read/write errors here
             try {
@@ -105,14 +101,8 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath)
                     qDebug() << " ... failed!" << endl;
                 }
 
-                vector<IMatcher::p_match> fts = viso.getFeatures();
-                for (vector<IMatcher::p_match>::iterator it = fts.begin(); it!=fts.end(); it++)
-                {
-                    *features << it->u1p << "," << it->v1p << " ; " << it->u1c << ", " << it->v1c << endl;
-                }
                 qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << endl;
                 *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << endl;
-//                *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
 
                 // release uint8_t buffers
                 free(img_data);
@@ -122,23 +112,18 @@ void ProcessThread::gerarDadosComLibviso(QString defaultPath)
                 qDebug() << "ERROR: Couldn't read input files!";
             }
         }
-        features->close();
         positions->close();
 }
 
 
 void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
 {
-    ofstream *features = new ofstream();
     ofstream *positions = new ofstream();
 
-    features->open(this->featuresOutputFile.toStdString().c_str());
     positions->open(this->odometryOutputFile.toStdString().c_str());
 
-    cout << "viso " << endl;
     // init visual odometry
     VisualOdometryMono viso(param);
-    cout << "viso " << endl;
 
     // current pose (this matrix transforms a point from the current
     // frame's camera coordinates to the first frame's camera coordinates)
@@ -148,21 +133,18 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
     QDir diretory(defaultPath);
     QStringList filtro;
     filtro << "*.png";
-    int nFrames = diretory.entryList(filtro).count();
-    qDebug() << nFrames;
 
-    cout << "viso " << endl;
+    int nFrames = diretory.count();
+
     bool replace = false;
 
-    // loop through all frames i=0:372
+    // loop through all frames
     for (int i=0; i<nFrames; i++) {
 
         // input file names
         char base_name[256];
         sprintf(base_name, filePattern.toStdString().c_str(),i);
         QString img_file_name  = defaultPath + "/" + base_name;
-        qDebug() << img_file_name << endl;
-        *features << "imagem " << i << endl;
 
         // catch image read/write errors here
         try {
@@ -174,7 +156,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
             qDebug() << "Processing: Frame: " << i << "/" << nFrames;
 
             // compute visual odometry
-            if (viso.process(img,replace && i!=step && i!=2*step)) {
+            if (viso.process(img,replace && i!=1 && i!=2)) {
 
                 // on success, update current pose
                 Matrix estimated = viso.getMotion();
@@ -185,7 +167,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
 //                        && 0.2 > sqrt(pow(estimatedMotionVector.val[3][0],2) + pow(estimatedMotionVector.val[4][0],2)  + pow(estimatedMotionVector.val[5][0],2))
                         )
                 {
-                    cout << "Ignorar movimento longo" << endl;
+                    qDebug() << "Ignorar movimento longo" << endl;
                     replace = true;
                     continue;
                 }
@@ -198,7 +180,7 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
                 double num_matches = viso.getNumberOfMatches();
                 double num_inliers = viso.getNumberOfInliers();
                 qDebug() << ", Matches: " << num_matches;
-                qDebug() << ", Inliers: " << 100.0*num_inliers/num_matches << " %" << ", Current pose: " << endl;
+                qDebug() << ", Inliers: " << 100.0*num_inliers/num_matches << "%" << endl;
 
                 //qDebug() << pose << endl << endl;
 
@@ -211,24 +193,19 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
             }
 
             vector<IMatcher::p_match> fts = viso.getFeatures();
-            for (vector<IMatcher::p_match>::iterator it = fts.begin(); it!=fts.end(); it++)
-            {
-                *features << it->u1p << "," << it->v1p << " ; " << it->u1c << ", " << it->v1c << endl;
-            }
             cvtColor(img,img,CV_GRAY2RGB);
             this->drawFeatures(img,viso.getFeaturesCV(), Scalar(255,0, 0));
             this->drawFeaturesCorrespondence(img,fts, Scalar(0,255,0), Scalar(255,0,255));
             this->drawFeaturesCorrespondence(img,viso.getInliers(), Scalar(0, 0, 255), Scalar(0,255,255));
-//            imshow("features",img);
+            //imshow("features",img);
 
             if (savePath != "")
             {
                 QString fileName = QString("/I1_%0.png").arg(QString::number(i/step),6, QChar('0'));
                 imwrite((savePath+fileName).toStdString(),img);
             }
-            qDebug() << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3];
-//            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << endl;
-            *positions << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0] << "," << img_file_name.toStdString() << endl;
+            cout << "Current pose: " << endl << pose << endl;
+            *positions << img_file_name.toStdString() << "," << pose.val[0][3] << ", " << pose.val[1][3] << ", " << pose.val[2][3] << ", " << rot.val[0][0] << "," << rot.val[1][0] << "," << rot.val[2][0]  << endl;
 
             // release uint8_t buffers
             img.release();
@@ -239,7 +216,6 @@ void ProcessThread::gerarDadosCV(QString defaultPath, QString savePath)
             break;
         }
     }
-    features->close();
     positions->close();
 }
 

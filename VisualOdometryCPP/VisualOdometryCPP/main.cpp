@@ -98,11 +98,13 @@ int main(int argc, char * argv[])
     param.calib.cu = cu; // principal point (u-coordinate) in pixels
     param.calib.cv = cv; // principal point (v-coordinate) in pixels
 
+    cout << OdometryImagesPath << " " << f << " " << cu << " " << cv << endl;
     ProcessThread *pt = new ProcessThread(param,
                                           QString::fromStdString(OdometryImagesPath),
                                           QString::fromStdString(OdometryOutputFile));
     pt->start();
 
+    pt->wait();
 
     return 0;
 }
