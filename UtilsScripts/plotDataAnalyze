@@ -115,6 +115,11 @@ def plotPrecisionRecallMap(data):
         plt.plot([0,size],[idx*dataStep,idx*dataStep],"k-")
         #Guarda os nomes dos resultados para se plotar no eixo y
         yLabels.append(getLabel(d[0]))
+        try:
+            recall = r[len(p)-p[::-1].index(1.)]
+            print getLabel(d[0]), "-", recall
+        except ValueError:
+            print getLabel(d[0]), "-", 0
 
     plt.imshow(ma.masked_where(mapPlot ==0,mapPlot),vmin=0.,vmax=1.)
     plt.xticks(arange(0.,size+1,0.1*size),arange(0.,1.1,0.1))
@@ -175,10 +180,10 @@ pathList = [
               ["SeqSLAM/RW_15","","r--"],
               ["SeqSLAM/RW_20","","r-"],
 
-             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5","","--"],
+#             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_5","","--"],
              ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_10","","--"],
              ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_15","","--"],
-             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_20","","--"],
+#             ["SafeSLAM/RW_5_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_5_MaxVar_0.8_MaxHalf_15","","--"],
@@ -190,8 +195,8 @@ pathList = [
 
              ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_5","","--"],
              ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_10","","b-"],
-             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_15","","--"],
-             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_20","","--"],
+#             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_15","","--"],
+#             ["SafeSLAM/RW_10_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_10_MaxVar_0.8_MaxHalf_15","","--"],
@@ -203,8 +208,8 @@ pathList = [
 
              ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_5","","--"],
              ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_10","","--"],
-             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_15","","--"],
-             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_20","","--"],
+#             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_15","","--"],
+#             ["SafeSLAM/RW_15_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_15_MaxVar_0.8_MaxHalf_15","","--"],
@@ -216,8 +221,8 @@ pathList = [
 
              ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_5","","--"],
              ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_10","","--"],
-             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_15","","g-"],
-             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_20","","--"],
+#             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_15","","g-"],
+#             ["SafeSLAM/RW_20_MaxVar_0.7_MaxHalf_20","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_5","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_10","","--"],
 #             ["SafeSLAM/RW_20_MaxVar_0.8_MaxHalf_15","","--"],
